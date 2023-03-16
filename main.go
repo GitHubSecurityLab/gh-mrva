@@ -34,13 +34,6 @@ var (
 	listFile       = ""
 )
 
-func registerGlobalFlags(fset *flag.FlagSet) {
-	// parsing subcommands in GoLang: https://abhinavg.net/2022/08/13/flag-subcommand/
-	flag.VisitAll(func(f *flag.Flag) {
-		fset.Var(f.Value, f.Name, f.Usage)
-	})
-}
-
 func resolveRepositories(listFile string, list string) ([]string, error) {
 	fmt.Printf("Resolving %s repositories from %s\n", list, listFile)
 	jsonFile, err := os.Open(listFile)
@@ -533,10 +526,31 @@ func main() {
 		listFile = configData.ListFile
 	}
 
+	helpFlag := flag.String("help", "", "This help documentation.")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, `
+gh mrva - submit and download CodeQL queries from MRVA
+
+Usage:
+	gh mrva submit --controller <controller> --lang <language> [--name <run name>] --list-file <list file> --list <list> --query <query>
+
+	gh mrva download --run <run id> --lang <language> --controller <controller> --output-dir <output directory> [--name <run name>] [--download-dbs]
+
+`)
+	}
+
 	flag.Parse()
+
+	if *helpFlag != "" {
+		flag.Usage()
+		os.Exit(0)
+	}
+
 	args := flag.Args()
 	if len(args) == 0 {
-		log.Fatal("Please specify a subcommand.")
+		flag.Usage()
+		os.Exit(0)
 	}
 	cmd, args := args[0], args[1:]
 
@@ -561,17 +575,20 @@ func submit(args []string) {
 	nameFlag := flag.String("name", "", "Name of run (optional)")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `gh mrva - submit and download CodeQL queries from MRVA
+		fmt.Fprintf(os.Stderr, `
+gh mrva - submit and download CodeQL queries from MRVA
+
 Usage:
 	gh mrva submit --controller <controller> --lang <language> [--name <run name>] --list-file <list file> --list <list> --query <query>
 
-Flags:
 `)
+		fmt.Fprintf(os.Stderr, "Flags:\n")
 		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\n")
 	}
+
 	flag.Parse(args)
 
-	// set global variables
 	if *langFlag != "" {
 		language = *langFlag
 	}
@@ -637,18 +654,20 @@ func download(args []string) {
 	nameFlag := flag.String("name", "", "Name of run (optional)")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `gh mrva - submit and download CodeQL queries from MRVA
+		fmt.Fprintf(os.Stderr, `
+gh mrva - submit and download CodeQL queries from MRVA
+
 Usage:
 	gh mrva download --run <run id> --lang <language> --controller <controller> --output-dir <output directory> [--name <run name>] [--download-dbs]
 
-Flags:
 `)
+		fmt.Fprintf(os.Stderr, "Flags:\n")
 		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\n")
 	}
 
 	flag.Parse(args)
 
-	// set global variables
 	if *langFlag != "" {
 		language = *langFlag
 	}
