@@ -301,7 +301,6 @@ defaultSuite:
 
 // Requests a query to be run against `respositories` on the given `controller`.
 func submitRun(repoChunk []string, bundle string) (int, error) {
-	// See https://github.com/github/github/blob/master/app/api/description/operations/code-scanning/create-variant-analysis.yaml
 	opts := api.ClientOptions{
 		Headers: map[string]string{"Accept": "application/vnd.github.v3+json"},
 	}
@@ -335,7 +334,6 @@ func submitRun(repoChunk []string, bundle string) (int, error) {
 }
 
 func getRunDetails(runId int) (map[string]interface{}, error) {
-	// See https://github.com/github/github/blob/master/app/api/description/operations/code-scanning/get-variant-analysis.yaml
 	opts := api.ClientOptions{
 		Headers: map[string]string{"Accept": "application/vnd.github.v3+json"},
 	}
@@ -352,7 +350,6 @@ func getRunDetails(runId int) (map[string]interface{}, error) {
 }
 
 func getRunRepositoryDetails(runId int, nwo string) (map[string]interface{}, error) {
-	// See https://github.com/github/github/blob/master/app/api/description/operations/code-scanning/get-variant-analysis-repo-task.yaml
 	opts := api.ClientOptions{
 		Headers: map[string]string{"Accept": "application/vnd.github.v3+json"},
 	}
