@@ -358,7 +358,7 @@ func getRunRepositoryDetails(runId int, nwo string) (map[string]interface{}, err
 	return response, nil
 }
 
-func downloadArtifact(url string, outputDir string) (string, error) {
+func downloadArtifact(url string, outputDir string, nwo string) (string, error) {
 	client, err := gh.HTTPClient(nil)
 	if err != nil {
 		return "", err
@@ -392,19 +392,19 @@ func downloadArtifact(url string, outputDir string) (string, error) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		extension := ""
 		resultPath := ""
 		if zf.Name == "results.bqrs" {
-			resultPath = filepath.Join(outputDir, "FOO.bqrs")
+			extension = "bqrs"
 		} else if zf.Name == "results.sarif" {
-			resultPath = filepath.Join(outputDir, "FOO.sarif")
+			extension = "sarif"
 		}
-		if resultPath != "" {
-			err = ioutil.WriteFile(resultPath, bytes, os.ModePerm)
-			if err != nil {
-				return "", err
-			}
-			return resultPath, nil
+		resultPath = filepath.Join(outputDir, fmt.Sprintf("%s.%s", strings.Replace(nwo, "/", "_", -1), extension))
+		err = ioutil.WriteFile(resultPath, bytes, os.ModePerm)
+		if err != nil {
+			return "", err
 		}
+		return resultPath, nil
 	}
 	return "", errors.New("No results.sarif file found in artifact")
 }
@@ -720,9 +720,12 @@ Usage:
 			nwo := repoInfo["full_name"].(string)
 			if result_count != nil && result_count.(float64) > 0 {
 				fmt.Printf("Repo %s has %d results\n", nwo, int(result_count.(float64)))
-				resultPath := filepath.Join(*outputDirFlag, fmt.Sprintf("%s.sarif", strings.Replace(nwo, "/", "_", -1)))
+				sarifPath := filepath.Join(*outputDirFlag, fmt.Sprintf("%s.sarif", strings.Replace(nwo, "/", "_", -1)))
+				bqrsPath := filepath.Join(*outputDirFlag, fmt.Sprintf("%s.bqrs", strings.Replace(nwo, "/", "_", -1)))
 
-				if _, err := os.Stat(resultPath); errors.Is(err, os.ErrNotExist) {
+				_, bqrsErr := os.Stat(bqrsPath)
+				_, sarifErr := os.Stat(sarifPath)
+				if errors.Is(bqrsErr, os.ErrNotExist) && errors.Is(sarifErr, os.ErrNotExist) {
 
 					// download artifact (BQRS or SARIF)
 					fmt.Printf("Downloading results for %s\n", repoInfo["full_name"])
@@ -731,7 +734,7 @@ Usage:
 						log.Fatal(err)
 					}
 					// download the results
-					artifactPath, err := downloadArtifact(runRepositoryDetails["artifact_url"].(string), *outputDirFlag)
+					artifactPath, err := downloadArtifact(runRepositoryDetails["artifact_url"].(string), *outputDirFlag, nwo)
 					if err != nil {
 						log.Fatal(err)
 					}
