@@ -1,5 +1,7 @@
 # gh-mrva
 
+> This is an unofficial tool and is not officially supported by GitHub.
+
 ## Configuration
 
 A configuration file will be created in `~/.config/mrva/config.yml`. The following options are supported:
