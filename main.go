@@ -11,7 +11,6 @@ import (
 	"github.com/cli/go-gh"
 	"github.com/cli/go-gh/pkg/api"
 	"github.com/google/uuid"
-	"github.com/tidwall/gjson"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
@@ -43,13 +42,39 @@ func resolveRepositories(listFile string, list string) ([]string, error) {
 	}
 	defer jsonFile.Close()
 	byteValue, _ := ioutil.ReadAll(jsonFile)
-	json := string(byteValue)
-	repositories := gjson.Get(json, list)
-	var result []string
-	for _, x := range repositories.Array() {
-		result = append(result, x.String())
+	var repoLists map[string][]string
+	err = json.Unmarshal(byteValue, &repoLists)
+	if err != nil {
+		log.Fatal(err)
 	}
-	return result, nil
+	return repoLists[list], nil
+}
+
+func resolveQueries(querySuite string) []string {
+	args := []string{"resolve", "queries", "--format=json", querySuite}
+	jsonBytes, err := exec.Command("codeql", args...).Output()
+	var queries []string
+	err = json.Unmarshal(jsonBytes, &queries)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return queries
+}
+
+func packPacklist(dir string, includeQueries bool) []string {
+	// since 2.7.1, packlist returns an object with a "paths" property that is a list of packs.
+	args := []string{"pack", "packlist", "--format=json"}
+	if !includeQueries {
+		args = append(args, "--no-include-queries")
+	}
+	args = append(args, dir)
+	jsonBytes, err := exec.Command("codeql", args...).Output()
+	var packlist map[string][]string
+	err = json.Unmarshal(jsonBytes, &packlist)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return packlist["paths"]
 }
 
 func findPackRoot(queryFile string) string {
@@ -65,26 +90,6 @@ func findPackRoot(queryFile string) string {
 		}
 	}
 	return filepath.Dir(queryFile)
-}
-
-func packPacklist(dir string, includeQueries bool) []string {
-	// since 2.7.1, packlist returns an object with a "paths" property that is a list of packs.
-	args := []string{"pack", "packlist", "--format=json"}
-	if !includeQueries {
-		args = append(args, "--no-include-queries")
-	}
-	args = append(args, dir)
-	json, err := exec.Command("codeql", args...).Output()
-	// parse the json
-	packlist := gjson.Get(string(json), "paths")
-	if err != nil {
-		log.Fatal(err)
-	}
-	var result []string
-	for _, x := range packlist.Array() {
-		result = append(result, x.String())
-	}
-	return result
 }
 
 func copyFile(srcPath string, targetPath string) error {
@@ -180,7 +185,6 @@ func generateQueryPack(queryFile string) (string, error) {
 	}
 	if _, err := os.Stat(queryFile); errors.Is(err, os.ErrNotExist) {
 		log.Fatal(fmt.Sprintf("Query file %s does not exist", queryFile))
-		os.Exit(1)
 	}
 	originalPackRoot := findPackRoot(queryFile)
 	packRelativePath, _ := filepath.Rel(originalPackRoot, queryFile)
@@ -569,6 +573,7 @@ Usage:
 func submit(args []string) {
 	flag := flag.NewFlagSet("mrva submit", flag.ExitOnError)
 	queryFileFlag := flag.String("query", "", "Path to query file")
+	querySuiteFileFlag := flag.String("query-suite", "", "Path to query suite file")
 	controllerFlag := flag.String("controller", "", "MRVA controller repository (overrides config file)")
 	listFileFlag := flag.String("list-file", "", "Path to repo list file (overrides config file)")
 	listFlag := flag.String("list", "", "Name of repo list")
@@ -580,7 +585,7 @@ func submit(args []string) {
 gh mrva - submit and download CodeQL queries from MRVA
 
 Usage:
-	gh mrva submit --controller <controller> --lang <language> [--name <run name>] --list-file <list file> --list <list> --query <query>
+	gh mrva submit --controller <controller> --lang <language> [--name <run name>] --list-file <list file> --list <list> [--query <query> | --query-suite <query suite>]
 
 `)
 		fmt.Fprintf(os.Stderr, "Flags:\n")
@@ -603,44 +608,55 @@ Usage:
 		listFile = *listFileFlag
 	}
 
-	if controller == "" || language == "" || listFile == "" || *listFlag == "" || *queryFileFlag == "" {
+	if controller == "" || language == "" || listFile == "" || *listFlag == "" || (*queryFileFlag == "" && *querySuiteFileFlag == "") {
 		flag.Usage()
 		os.Exit(1)
 	}
 
+	// read list of target repositories
 	repositories, err := resolveRepositories(listFile, *listFlag)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Requesting run for %d repositories from %s:%s\n", len(repositories), listFile, *listFlag)
 
-	encodedBundle, err := generateQueryPack(*queryFileFlag)
-	if err != nil {
-		log.Fatal(err)
+	queries := []string{}
+	if *queryFileFlag != "" {
+		queries = append(queries, *queryFileFlag)
+	} else if *querySuiteFileFlag != "" {
+		queries = resolveQueries(*querySuiteFileFlag)
 	}
-	fmt.Println("Generated encoded bundle")
 
-	var chunks [][]string
-	for i := 0; i < len(repositories); i += MAX_MRVA_REPOSITORIES {
-		end := i + MAX_MRVA_REPOSITORIES
-		if end > len(repositories) {
-			end = len(repositories)
-		}
-		chunks = append(chunks, repositories[i:end])
-	}
-	var ids []int
-	for _, chunk := range chunks {
-		id, err := submitRun(chunk, encodedBundle)
+	fmt.Printf("Requesting running %d queries for %d repositories\n", len(queries), len(repositories))
+
+	for _, query := range queries {
+		encodedBundle, err := generateQueryPack(query)
 		if err != nil {
 			log.Fatal(err)
 		}
-		ids = append(ids, id)
-	}
-	fmt.Printf("Submitted run %v\n", ids)
-	if runName != "" {
-		err = saveInCache(runName, ids)
-		if err != nil {
-			log.Fatal(err)
+		fmt.Printf("Generated encoded bundle for %s\n", query)
+
+		var chunks [][]string
+		for i := 0; i < len(repositories); i += MAX_MRVA_REPOSITORIES {
+			end := i + MAX_MRVA_REPOSITORIES
+			if end > len(repositories) {
+				end = len(repositories)
+			}
+			chunks = append(chunks, repositories[i:end])
+		}
+		var ids []int
+		for _, chunk := range chunks {
+			id, err := submitRun(chunk, encodedBundle)
+			if err != nil {
+				log.Fatal(err)
+			}
+			ids = append(ids, id)
+		}
+		fmt.Printf("Submitted run %v\n", ids)
+		if runName != "" {
+			err = saveInCache(runName, ids)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 }
