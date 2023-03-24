@@ -145,7 +145,7 @@ func fixPackFile(queryPackDir string, packRelativePath string) error {
 			// if value is a string and value contains `${workspace}`
 			if value == "${workspace}" {
 				// replace the value with `*`
-				packData["dependencies"].(map[string]string)[key] = "*"
+				packData["dependencies"].(map[string]interface{})[key] = "*"
 			}
 		}
 	}
@@ -493,11 +493,15 @@ type Config struct {
 func main() {
 
 	// read config file
-	homePath := os.Getenv("XDG_CONFIG_HOME")
-	if homePath == "" {
-		homePath = os.Getenv("HOME")
+	configPath := os.Getenv("XDG_CONFIG_HOME")
+	if configPath == "" {
+		homePath := os.Getenv("HOME")
+		if homePath == "" {
+			log.Fatal("HOME environment variable not set")
+		}
+		configPath = filepath.Join(homePath, ".config")
 	}
-	configFilePath = filepath.Join(homePath, ".config", "mrva", "config.yml")
+	configFilePath = filepath.Join(configPath, "mrva", "config.yml")
 	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
 		// create config file if it doesn't exist
 		// since we will use it for the name/ids cache
