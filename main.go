@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"github.com/cli/go-gh"
 	"github.com/cli/go-gh/pkg/api"
-	"github.com/cli/go-gh/pkg/jsonpretty"
+	// "github.com/cli/go-gh/pkg/jsonpretty"
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
@@ -476,7 +476,7 @@ func downloadDatabase(nwo string, language string, outputDir string) error {
 	return nil
 }
 
-func saveInHistory(name string, controller string, runIds []int, language string, listFile string, list string, query string, count int) error {
+func saveInHistory(name string, controller string, runs []Run, language string, listFile string, list string, query string, count int) error {
 	configData, err := getConfig(configFilePath)
 	if err != nil {
 		return err
@@ -490,13 +490,12 @@ func saveInHistory(name string, controller string, runIds []int, language string
 	} else {
 		configData.History[name] = HistoryEntry{
 			Name:            name,
-			RunIds:          runIds,
+			Runs:            runs,
 			Timestamp:       time.Now(),
 			Controller:      controller,
 			Language:        language,
 			ListFile:        listFile,
 			List:            list,
-			Query:           query,
 			RepositoryCount: count,
 		}
 	}
@@ -513,14 +512,14 @@ func saveInHistory(name string, controller string, runIds []int, language string
 	return nil
 }
 
-func loadFromHistory(name string) (string, []int, string, error) {
+func loadFromHistory(name string) (string, []Run, string, error) {
 	configData, err := getConfig(configFilePath)
 	if err != nil {
 		return "", nil, "", err
 	}
 	if configData.History != nil {
 		if entry, ok := configData.History[name]; ok {
-			return entry.Controller, entry.RunIds, entry.Language, nil
+			return entry.Controller, entry.Runs, entry.Language, nil
 		}
 	}
 	return "", nil, "", errors.New("No history entry found for " + name)
@@ -539,15 +538,19 @@ func getConfig(path string) (Config, error) {
 	return configData, nil
 }
 
+type Run struct {
+	Id    int    `yaml:"run_id"`
+	Query string `yaml:"query"`
+}
+
 type HistoryEntry struct {
 	Name            string    `yaml:"name"`
 	Timestamp       time.Time `yaml:"timestamp"`
-	RunIds          []int     `yaml:"runIds"`
+	Runs            []Run     `yaml:"runIds"`
 	Controller      string    `yaml:"controller"`
 	ListFile        string    `yaml:"listFile"`
 	List            string    `yaml:"list"`
 	Language        string    `yaml:"language"`
-	Query           string    `yaml:"query"`
 	RepositoryCount int       `yaml:"repositoryCount"`
 }
 type Config struct {
@@ -589,17 +592,16 @@ func main() {
 	helpFlag := flag.String("help", "", "This help documentation.")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `
-gh mrva - submit and download CodeQL queries from MRVA
+		fmt.Fprintf(os.Stderr, `gh mrva - Run CodeQL queries at scale using Multi-Repository Variant Analysis (MRVA)
 
 Usage:
-	gh mrva submit [--codeql-dist <path to CodeQL dist>] [--controller <controller>] --lang <language> --name <run name> [--list-file <list file>] --list <list> [--query <query> | --query-suite <query suite>]
+  gh mrva submit [--codeql-path <path to CodeQL>] [--controller <controller>] --lang <language> --name <run name> [--list-file <list file>] --list <list> [--query <query> | --query-suite <query suite>]
 
-	gh mrva download --name <run name> --output-dir <output directory> [--download-dbs]
+	gh mrva download --name <run name> --output-dir <output directory> [--download-dbs] [--nwo <owner/repo>]
 
   gh mrva status --name <run name> [--json]
 
-	gh mrva list [--json]
+  gh mrva list [--json]
 `)
 	}
 
@@ -638,8 +640,7 @@ func status(args []string) {
 	jsonFlag := flag.Bool("json", false, "Output in JSON format (default: false)")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `
-gh mrva - submit and download CodeQL queries from MRVA
+		fmt.Fprintf(os.Stderr, `gh mrva - Run CodeQL queries at scale using Multi-Repository Variant Analysis (MRVA)
 
 Usage:
   gh mrva status --name <run name> [--json]
@@ -662,45 +663,47 @@ Usage:
 		os.Exit(1)
 	}
 
-	controller, runIds, _, err := loadFromHistory(runName)
+	controller, runs, _, err := loadFromHistory(runName)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if len(runIds) == 0 {
+	if len(runs) == 0 {
 		log.Fatal("No runs found for run name", runName)
 	}
 
-	type Run struct {
-		Id            int
-		Status        string
-		FailureReason string
+	type RunStatus struct {
+		Id            int    `json:"id"`
+		Query         string `json:"query"`
+		Status        string `json:"status"`
+		FailureReason string `json:"failure_reason"`
 	}
 
 	type RepoWithFindings struct {
-		Nwo   string
-		Count int
+		Nwo   string `json:"nwo"`
+		Count int    `json:"count"`
+		RunId int    `json:"run_id"`
 	}
 	type Results struct {
-		Runs                                   []Run
-		ResositoriesWithFindings               []RepoWithFindings
-		TotalFindingsCount                     int
-		TotalSuccessfulScans                   int
-		TotalFailedScans                       int
-		TotalRepositoriesWithFindings          int
-		TotalSkippedRepositories               int
-		TotalSkippedAccessMismatchRepositories int
-		TotalSkippedNotFoundRepositories       int
-		TotalSkippedNoDatabaseRepositories     int
-		TotalSkippedOverLimitRepositories      int
+		Runs                                   []RunStatus        `json:"runs"`
+		ResositoriesWithFindings               []RepoWithFindings `json:"repositories_with_findings"`
+		TotalFindingsCount                     int                `json:"total_findings_count"`
+		TotalSuccessfulScans                   int                `json:"total_successful_scans"`
+		TotalFailedScans                       int                `json:"total_failed_scans"`
+		TotalRepositoriesWithFindings          int                `json:"total_repositories_with_findings"`
+		TotalSkippedRepositories               int                `json:"total_skipped_repositories"`
+		TotalSkippedAccessMismatchRepositories int                `json:"total_skipped_access_mismatch_repositories"`
+		TotalSkippedNotFoundRepositories       int                `json:"total_skipped_not_found_repositories"`
+		TotalSkippedNoDatabaseRepositories     int                `json:"total_skipped_no_database_repositories"`
+		TotalSkippedOverLimitRepositories      int                `json:"total_skipped_over_limit_repositories"`
 	}
 
 	var results Results
 
-	for _, runId := range runIds {
+	for _, run := range runs {
 		if err != nil {
 			log.Fatal(err)
 		}
-		runDetails, err := getRunDetails(controller, runId)
+		runDetails, err := getRunDetails(controller, run.Id)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -713,8 +716,9 @@ Usage:
 			failure_reason = ""
 		}
 
-		results.Runs = append(results.Runs, Run{
-			Id:            runId,
+		results.Runs = append(results.Runs, RunStatus{
+			Id:            run.Id,
+			Query:         run.Query,
 			Status:        status,
 			FailureReason: failure_reason,
 		})
@@ -729,6 +733,7 @@ Usage:
 					results.ResositoriesWithFindings = append(results.ResositoriesWithFindings, RepoWithFindings{
 						Nwo:   repoInfo["full_name"].(string),
 						Count: int(repo.(map[string]interface{})["result_count"].(float64)),
+						RunId: run.Id,
 					})
 				}
 			} else if repo.(map[string]interface{})["analysis_status"].(string) == "failed" {
@@ -755,9 +760,10 @@ Usage:
 		if err != nil {
 			log.Fatal(err)
 		}
-		w := &bytes.Buffer{}
-		jsonpretty.Format(w, bytes.NewReader(data), "  ", true)
-		fmt.Println(w.String())
+		fmt.Println(string(data))
+		// w := &bytes.Buffer{}
+		// jsonpretty.Format(w, bytes.NewReader(data), "  ", true)
+		// fmt.Println(w.String())
 	} else {
 		// Print results in a nice way
 		fmt.Println("Run name:", runName)
@@ -791,11 +797,10 @@ func submit(configData Config, args []string) {
 	nameFlag := flag.String("name", "", "Name of run")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `
-gh mrva - submit and download CodeQL queries from MRVA
+		fmt.Fprintf(os.Stderr, `gh mrva - Run CodeQL queries at scale using Multi-Repository Variant Analysis (MRVA)
 
 Usage:
-	gh mrva submit [--codeql-dist <path to CodeQL dist>] [--controller <controller>] --lang <language> --name <run name> [--list-file <list file>] --list <list> [--query <query> | --query-suite <query suite>]
+	gh mrva submit [--codeql-path <path to CodeQL>] [--controller <controller>] --lang <language> --name <run name> [--list-file <list file>] --list <list> [--query <query> | --query-suite <query suite>]
 
 `)
 		fmt.Fprintf(os.Stderr, "Flags:\n")
@@ -865,8 +870,8 @@ Usage:
 		queries = resolveQueries(codeqlPath, querySuiteFile)
 	}
 
-	fmt.Printf("Requesting running %d queries for %d repositories\n", len(queries), len(repositories))
-	var runIds []int
+	fmt.Printf("Submitting %d queries for %d repositories\n", len(queries), len(repositories))
+	var runs []Run
 	for _, query := range queries {
 		encodedBundle, err := generateQueryPack(codeqlPath, query, language)
 		if err != nil {
@@ -887,26 +892,26 @@ Usage:
 			if err != nil {
 				log.Fatal(err)
 			}
-			runIds = append(runIds, id)
+			runs = append(runs, Run{Id: id, Query: query})
 		}
+
 	}
-	fmt.Printf("Submitted runs: %v\n", runIds)
 	if querySuiteFile != "" {
-		err = saveInHistory(runName, controller, runIds, language, listFile, list, querySuiteFile, len(repositories))
+		err = saveInHistory(runName, controller, runs, language, listFile, list, querySuiteFile, len(repositories))
 	} else if queryFile != "" {
-		err = saveInHistory(runName, controller, runIds, language, listFile, list, queryFile, len(repositories))
+		err = saveInHistory(runName, controller, runs, language, listFile, list, queryFile, len(repositories))
 	}
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("Done!")
 }
 
 func list(args []string) {
 	flag := flag.NewFlagSet("mrva list", flag.ExitOnError)
 	jsonFlag := flag.Bool("json", false, "Output in JSON format (default: false)")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `
-gh mrva - submit and download CodeQL queries from MRVA
+		fmt.Fprintf(os.Stderr, `gh mrva - Run CodeQL queries at scale using Multi-Repository Variant Analysis (MRVA)
 
 Usage:
 	gh mrva list [--json]
@@ -932,10 +937,10 @@ Usage:
 				if err != nil {
 					log.Fatal(err)
 				}
-
-				w := &bytes.Buffer{}
-				jsonpretty.Format(w, bytes.NewReader(data), "  ", true)
-				fmt.Println(w.String())
+				fmt.Println(string(data))
+				// w := &bytes.Buffer{}
+				// jsonpretty.Format(w, bytes.NewReader(data), "  ", true)
+				// fmt.Println(w.String())
 			}
 		} else {
 			for name, entry := range configData.History {
@@ -945,7 +950,10 @@ Usage:
 				fmt.Printf("  List file: %s\n", entry.ListFile)
 				fmt.Printf("  List: %s\n", entry.List)
 				fmt.Printf("  Repository count: %d\n", entry.RepositoryCount)
-				fmt.Printf("  Query(s) : %s\n", entry.Query)
+				for _, run := range entry.Runs {
+					fmt.Printf("  Run ID: %s\n", run.Id)
+					fmt.Printf("  Query(s) : %s\n", run.Query)
+				}
 			}
 		}
 	}
@@ -959,8 +967,7 @@ func download(args []string) {
 	nwoFlag := flag.String("nwo", "", "Repository to download artifacts for (optional)")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `
-gh mrva - submit and download CodeQL queries from MRVA
+		fmt.Fprintf(os.Stderr, `gh mrva - Run CodeQL queries at scale using Multi-Repository Variant Analysis (MRVA)
 
 Usage:
 	gh mrva download --name <run name> --output-dir <output directory> [--download-dbs] [--nwo <owner/repo>]
@@ -993,22 +1000,22 @@ Usage:
 		}
 	}
 
-	controller, runIds, language, err := loadFromHistory(runName)
+	controller, runs, language, err := loadFromHistory(runName)
 	if err != nil {
 		log.Fatal(err)
-	} else if len(runIds) == 0 {
+	} else if len(runs) == 0 {
 		log.Fatal("No runs found for name " + runName)
 	}
 
 	var downloadTasks []DownloadTask
 
-	for _, runId := range runIds {
-		runDetails, err := getRunDetails(controller, runId)
+	for _, run := range runs {
+		runDetails, err := getRunDetails(controller, run.Id)
 		if err != nil {
 			log.Fatal(err)
 		}
 		if runDetails["status"] == "in_progress" {
-			log.Printf("Run %d is not complete yet. Please try again later.", runId)
+			log.Printf("Run %d is not complete yet. Please try again later.", run.Id)
 			return
 		}
 		for _, r := range runDetails["scanned_repositories"].([]interface{}) {
@@ -1030,7 +1037,7 @@ Usage:
 				_, sarifErr := os.Stat(sarifPath)
 				if errors.Is(bqrsErr, os.ErrNotExist) && errors.Is(sarifErr, os.ErrNotExist) {
 					downloadTasks = append(downloadTasks, DownloadTask{
-						runId:      runId,
+						runId:      run.Id,
 						nwo:        nwo,
 						controller: controller,
 						artifact:   "artifact",
@@ -1042,7 +1049,7 @@ Usage:
 					// check if the database already exists
 					if _, err := os.Stat(targetPath); errors.Is(err, os.ErrNotExist) {
 						downloadTasks = append(downloadTasks, DownloadTask{
-							runId:      runId,
+							runId:      run.Id,
 							nwo:        nwo,
 							controller: controller,
 							artifact:   "database",
@@ -1092,5 +1099,4 @@ Usage:
 
 	// drain the progress channel
 	<-progressDone
-
 }
