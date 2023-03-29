@@ -694,6 +694,7 @@ Usage:
 		Nwo   string `json:"nwo"`
 		Count int    `json:"count"`
 		RunId int    `json:"run_id"`
+		Stars int    `json:"stars"`
 	}
 	type Results struct {
 		Runs                                   []RunStatus        `json:"runs"`
@@ -746,6 +747,7 @@ Usage:
 						Nwo:   repoInfo["full_name"].(string),
 						Count: int(repo.(map[string]interface{})["result_count"].(float64)),
 						RunId: run.Id,
+						Stars: int(repoInfo["stargazers_count"].(float64)),
 					})
 				}
 			} else if repo.(map[string]interface{})["analysis_status"].(string) == "failed" {
