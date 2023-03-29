@@ -30,7 +30,8 @@ const (
 )
 
 var (
-	configFilePath string
+	configFilePath   string
+	sessionsFilePath string
 )
 
 func runCodeQLCommand(codeqlPath string, combined bool, args ...string) ([]byte, error) {
@@ -476,19 +477,19 @@ func downloadDatabase(nwo string, language string, outputDir string) error {
 	return nil
 }
 
-func saveInHistory(name string, controller string, runs []Run, language string, listFile string, list string, query string, count int) error {
-	configData, err := getConfig(configFilePath)
+func saveSession(name string, controller string, runs []Run, language string, listFile string, list string, query string, count int) error {
+	sessions, err := getSessions()
 	if err != nil {
 		return err
 	}
-	if configData.History == nil {
-		configData.History = make(map[string]HistoryEntry)
+	if sessions == nil {
+		sessions = make(map[string]Session)
 	}
-	// add new history entry if it doesn't already exist
-	if _, ok := configData.History[name]; ok {
-		return errors.New("Name already exists in history")
+	// add new session if it doesn't already exist
+	if _, ok := sessions[name]; ok {
+		return errors.New(fmt.Sprintf("Session '%s' already exists", name))
 	} else {
-		configData.History[name] = HistoryEntry{
+		sessions[name] = Session{
 			Name:            name,
 			Runs:            runs,
 			Timestamp:       time.Now(),
@@ -499,33 +500,46 @@ func saveInHistory(name string, controller string, runs []Run, language string, 
 			RepositoryCount: count,
 		}
 	}
-	// marshal config data to yaml
-	configDataYaml, err := yaml.Marshal(configData)
+	// marshal sessions to yaml
+	sessionsYaml, err := yaml.Marshal(sessions)
 	if err != nil {
 		return err
 	}
-	// write config data to file
-	err = ioutil.WriteFile(configFilePath, configDataYaml, os.ModePerm)
+	// write sessions to file
+	err = ioutil.WriteFile(sessionsFilePath, sessionsYaml, os.ModePerm)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func loadFromHistory(name string) (string, []Run, string, error) {
-	configData, err := getConfig(configFilePath)
+func loadSession(name string) (string, []Run, string, error) {
+	sessions, err := getSessions()
 	if err != nil {
 		return "", nil, "", err
 	}
-	if configData.History != nil {
-		if entry, ok := configData.History[name]; ok {
+	if sessions != nil {
+		if entry, ok := sessions[name]; ok {
 			return entry.Controller, entry.Runs, entry.Language, nil
 		}
 	}
-	return "", nil, "", errors.New("No history entry found for " + name)
+	return "", nil, "", errors.New("No session found for " + name)
 }
 
-func getConfig(path string) (Config, error) {
+func getSessions() (map[string]Session, error) {
+	sessionsFile, err := ioutil.ReadFile(sessionsFilePath)
+	var sessions map[string]Session
+	if err != nil {
+		return sessions, err
+	}
+	err = yaml.Unmarshal(sessionsFile, &sessions)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return sessions, nil
+}
+
+func getConfig() (Config, error) {
 	configFile, err := ioutil.ReadFile(configFilePath)
 	var configData Config
 	if err != nil {
@@ -539,25 +553,24 @@ func getConfig(path string) (Config, error) {
 }
 
 type Run struct {
-	Id    int    `yaml:"run_id"`
+	Id    int    `yaml:"id"`
 	Query string `yaml:"query"`
 }
 
-type HistoryEntry struct {
+type Session struct {
 	Name            string    `yaml:"name"`
 	Timestamp       time.Time `yaml:"timestamp"`
-	Runs            []Run     `yaml:"runIds"`
+	Runs            []Run     `yaml:"runs"`
 	Controller      string    `yaml:"controller"`
-	ListFile        string    `yaml:"listFile"`
+	ListFile        string    `yaml:"list_file"`
 	List            string    `yaml:"list"`
 	Language        string    `yaml:"language"`
-	RepositoryCount int       `yaml:"repositoryCount"`
+	RepositoryCount int       `yaml:"repository_count"`
 }
 type Config struct {
-	Controller string                  `yaml:"controller"`
-	ListFile   string                  `yaml:"listFile"`
-	CodeQLPath string                  `yaml:"codeqlPath"`
-	History    map[string]HistoryEntry `yaml:"history"`
+	Controller string `yaml:"controller"`
+	ListFile   string `yaml:"list_file"`
+	CodeQLPath string `yaml:"codeql_path"`
 }
 
 func main() {
@@ -570,25 +583,24 @@ func main() {
 		configPath = filepath.Join(homePath, ".config")
 	}
 	configFilePath = filepath.Join(configPath, "gh-mrva", "config.yml")
-	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
-		// create config file if it doesn't exist
-		// since we will use it for storing the history
-		err := os.MkdirAll(filepath.Dir(configFilePath), os.ModePerm)
-		if err != nil {
-			log.Println("Failed to create config file directory")
-		}
-		// create empty file at configFilePath
-		configFile, err := os.Create(configFilePath)
-		if err != nil {
-			log.Fatal(err, "Failed to create config file")
-		}
-		configFile.Close()
-	}
-	configData, err := getConfig(configFilePath)
+	configData, err := getConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	sessionsFilePath = filepath.Join(configPath, "gh-mrva", "sessions.yml")
+	if _, err := os.Stat(sessionsFilePath); os.IsNotExist(err) {
+		err := os.MkdirAll(filepath.Dir(sessionsFilePath), os.ModePerm)
+		if err != nil {
+			log.Fatal("Failed to create config directory")
+		}
+		// create empty file at sessionsFilePath
+		sessionsFile, err := os.Create(sessionsFilePath)
+		if err != nil {
+			log.Fatal("Failed to create sessions file")
+		}
+		sessionsFile.Close()
+	}
 	helpFlag := flag.String("help", "", "This help documentation.")
 
 	flag.Usage = func() {
@@ -663,7 +675,7 @@ Usage:
 		os.Exit(1)
 	}
 
-	controller, runs, _, err := loadFromHistory(runName)
+	controller, runs, _, err := loadSession(runName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -897,9 +909,9 @@ Usage:
 
 	}
 	if querySuiteFile != "" {
-		err = saveInHistory(runName, controller, runs, language, listFile, list, querySuiteFile, len(repositories))
+		err = saveSession(runName, controller, runs, language, listFile, list, querySuiteFile, len(repositories))
 	} else if queryFile != "" {
-		err = saveInHistory(runName, controller, runs, language, listFile, list, queryFile, len(repositories))
+		err = saveSession(runName, controller, runs, language, listFile, list, queryFile, len(repositories))
 	}
 	if err != nil {
 		log.Fatal(err)
@@ -926,13 +938,13 @@ Usage:
 
 	var jsonOutput = *jsonFlag
 
-	configData, err := getConfig(configFilePath)
+	sessions, err := getSessions()
 	if err != nil {
 		log.Fatal(err)
 	}
-	if configData.History != nil {
+	if sessions != nil {
 		if jsonOutput {
-			for _, entry := range configData.History {
+			for _, entry := range sessions {
 				data, err := json.MarshalIndent(entry, "", "  ")
 				if err != nil {
 					log.Fatal(err)
@@ -943,16 +955,17 @@ Usage:
 				// fmt.Println(w.String())
 			}
 		} else {
-			for name, entry := range configData.History {
+			for name, entry := range sessions {
 				fmt.Printf("%s (%v)\n", name, entry.Timestamp)
 				fmt.Printf("  Controller: %s\n", entry.Controller)
 				fmt.Printf("  Language: %s\n", entry.Language)
 				fmt.Printf("  List file: %s\n", entry.ListFile)
 				fmt.Printf("  List: %s\n", entry.List)
 				fmt.Printf("  Repository count: %d\n", entry.RepositoryCount)
+				fmt.Println("  Runs:")
 				for _, run := range entry.Runs {
-					fmt.Printf("  Run ID: %s\n", run.Id)
-					fmt.Printf("  Query(s) : %s\n", run.Query)
+					fmt.Printf("    ID: %d\n", run.Id)
+					fmt.Printf("    Query: %s\n", run.Query)
 				}
 			}
 		}
@@ -1000,7 +1013,7 @@ Usage:
 		}
 	}
 
-	controller, runs, language, err := loadFromHistory(runName)
+	controller, runs, language, err := loadSession(runName)
 	if err != nil {
 		log.Fatal(err)
 	} else if len(runs) == 0 {
