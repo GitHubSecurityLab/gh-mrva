@@ -558,14 +558,14 @@ type Run struct {
 }
 
 type Session struct {
-	Name            string    `yaml:"name"`
-	Timestamp       time.Time `yaml:"timestamp"`
-	Runs            []Run     `yaml:"runs"`
-	Controller      string    `yaml:"controller"`
-	ListFile        string    `yaml:"list_file"`
-	List            string    `yaml:"list"`
-	Language        string    `yaml:"language"`
-	RepositoryCount int       `yaml:"repository_count"`
+	Name            string    `yaml:"name" json:"name"`
+	Timestamp       time.Time `yaml:"timestamp" json:"timestamp"`
+	Runs            []Run     `yaml:"runs" json:"runs"`
+	Controller      string    `yaml:"controller" json:"controller"`
+	ListFile        string    `yaml:"list_file" json:"list_file"`
+	List            string    `yaml:"list" json:"list"`
+	Language        string    `yaml:"language" json:"language"`
+	RepositoryCount int       `yaml:"repository_count" json:"repository_count"`
 }
 type Config struct {
 	Controller string `yaml:"controller"`
@@ -946,16 +946,18 @@ Usage:
 	}
 	if sessions != nil {
 		if jsonOutput {
-			for _, entry := range sessions {
-				data, err := json.MarshalIndent(entry, "", "  ")
-				if err != nil {
-					log.Fatal(err)
-				}
-				fmt.Println(string(data))
-				// w := &bytes.Buffer{}
-				// jsonpretty.Format(w, bytes.NewReader(data), "  ", true)
-				// fmt.Println(w.String())
+			sessions_list := make([]Session, 0, len(sessions))
+			for _, session := range sessions {
+				sessions_list = append(sessions_list, session)
 			}
+			data, err := json.MarshalIndent(sessions_list, "", "  ")
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println(string(data))
+			// w := &bytes.Buffer{}
+			// jsonpretty.Format(w, bytes.NewReader(data), "  ", true)
+			// fmt.Println(w.String())
 		} else {
 			for name, entry := range sessions {
 				fmt.Printf("%s (%v)\n", name, entry.Timestamp)
