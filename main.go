@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"github.com/cli/go-gh"
 	"github.com/cli/go-gh/pkg/api"
-	// "github.com/cli/go-gh/pkg/jsonpretty"
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
@@ -477,6 +476,34 @@ func downloadDatabase(nwo string, language string, outputDir string) error {
 	return nil
 }
 
+func deleteSession(name string) error {
+	sessions, err := getSessions()
+	if err != nil {
+		return err
+	}
+	if sessions == nil {
+		return errors.New("No sessions found")
+	}
+	// delete session if it exists
+	if _, ok := sessions[name]; ok {
+
+		delete(sessions, name)
+
+		// marshal sessions to yaml
+		sessionsYaml, err := yaml.Marshal(sessions)
+		if err != nil {
+			return err
+		}
+		// write sessions to file
+		err = ioutil.WriteFile(sessionsFilePath, sessionsYaml, os.ModePerm)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return errors.New(fmt.Sprintf("Session '%s' does not exist", name))
+}
+
 func saveSession(name string, controller string, runs []Run, language string, listFile string, list string, query string, count int) error {
 	sessions, err := getSessions()
 	if err != nil {
@@ -614,6 +641,8 @@ Usage:
   gh mrva status --name <run name> [--json]
 
   gh mrva list [--json]
+
+  gh mrva delete --name <run name>
 `)
 	}
 
@@ -640,6 +669,8 @@ Usage:
 		status(args)
 	case "list":
 		list(args)
+	case "delete":
+		del(args)
 	default:
 		log.Fatalf("Unrecognized command %q. "+
 			"Command must be one of: submit, download", cmd)
@@ -775,11 +806,7 @@ Usage:
 			log.Fatal(err)
 		}
 		fmt.Println(string(data))
-		// w := &bytes.Buffer{}
-		// jsonpretty.Format(w, bytes.NewReader(data), "  ", true)
-		// fmt.Println(w.String())
 	} else {
-		// Print results in a nice way
 		fmt.Println("Run name:", runName)
 		fmt.Println("Total runs:", len(results.Runs))
 		fmt.Println("Total successful scans:", results.TotalSuccessfulScans)
@@ -919,6 +946,36 @@ Usage:
 		log.Fatal(err)
 	}
 	fmt.Println("Done!")
+}
+
+func del(args []string) {
+	flag := flag.NewFlagSet("mrva delete", flag.ExitOnError)
+	nameFlag := flag.String("name", "", "Session name to be deleted")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, `gh mrva - Run CodeQL queries at scale using Multi-Repository Variant Analysis (MRVA)
+
+Usage:
+	gh mrva delete --name
+
+`)
+		fmt.Fprintf(os.Stderr, "Flags:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\n")
+	}
+
+	flag.Parse(args)
+
+	if *nameFlag == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	err := deleteSession(*nameFlag)
+	if err == nil {
+		fmt.Println("Session deleted")
+	} else {
+		log.Fatal(err)
+	}
 }
 
 func list(args []string) {
