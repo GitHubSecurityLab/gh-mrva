@@ -30,6 +30,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+  sessionNameFlag string
+  outputDirFlag string
+  downloadDBsFlag bool
+  nwoFlag string
+  jsonFlag bool
+  languageFlag string
+  listFileFlag string
+  listFlag string
+  codeqlPathFlag string
+  controllerFlag string
+  queryFileFlag string
+  querySuiteFileFlag string
+) 
 var rootCmd = &cobra.Command{
 	Use:   "gh-mrva",
 	Short: "Run CodeQL queries at scale using GitHub's Multi-Repository Variant Analysis (MRVA)",
