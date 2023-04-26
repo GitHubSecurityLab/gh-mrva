@@ -14,7 +14,7 @@ A configuration file will be created in `~/.config/mrva/config.yml`. The followi
 ### Submit a new query
 
 ```bash
-gh mrva submit [--codeql-path<path to CodeQL>] [--controller <controller>] --lang <language> --name <run name> [--list-file <list file>] --list <list> [--query <query> | --query-suite <query suite> ]
+gh mrva submit [--codeql-path<path to CodeQL>] [--controller <controller>] --language <language> --session <session name> [--list-file <list file>] --list <list> [--query <query> | --query-suite <query suite> ]
 ```
 
 Note: `codeql-dist`, `controller` and `list-file` are only optionals if defined in the configuration file
@@ -22,7 +22,7 @@ Note: `codeql-dist`, `controller` and `list-file` are only optionals if defined 
 ### Download the results
 
 ```bash
-gh mrva download --name <run name> --output-dir <output directory> [--download-dbs] [--nwo <owner/repo>]
+gh mrva download --session <session name> --output-dir <output directory> [--download-dbs] [--nwo <owner/repo>]
 ```
 
 ### List sessions
@@ -34,12 +34,12 @@ gh mrva list [--json]
 ### Check scan status
 
 ```bash
-gh mrva status --name <run name> [--json]
+gh mrva status --session <session name> [--json]
 ```
 
 ## Contributing
 
-gh-mrva is a work in progress. If you have ideas for new fixes or improvements, please open an issue or pull request.
+`gh-mrva` is a work in progress. If you have ideas for new fixes or improvements, please open an issue or pull request.
 
 If possible, tests should be added for any new fixes. We favour testing with real file systems or processes where possible.
 

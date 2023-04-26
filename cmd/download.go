@@ -34,8 +34,8 @@ func init() {
 	downloadCmd.Flags().StringVarP(&outputDirFlag, "output-dir", "o", "", "Output directory")
 	downloadCmd.Flags().BoolVarP(&downloadDBsFlag, "download-dbs", "d", false, "Download databases (optional)")
 	downloadCmd.Flags().StringVarP(&nwoFlag, "nwo", "n", "", "Repository to download artifacts for (optional)")
-	statusCmd.MarkFlagRequired("session")
-	statusCmd.MarkFlagRequired("output-dir")
+	downloadCmd.MarkFlagRequired("session")
+	downloadCmd.MarkFlagRequired("output-dir")
 }
 
 func downloadArtifacts() {
