@@ -104,6 +104,11 @@ func submitQuery() {
 		os.Exit(1)
   }
 
+  if _, _, _, err := utils.LoadSession(sessionName); err == nil {
+    fmt.Println("Session already exists.")
+    os.Exit(1)
+  }
+
 	// read list of target repositories
 	repositories, err := utils.ResolveRepositories(listFile, listName)
 	if err != nil {
