@@ -4,10 +4,10 @@
 
 ## Configuration
 
-A configuration file will be created in `~/.config/mrva/config.yml`. The following options are supported:
-- `codeql-path`: Path to CodeQL distribution
+A configuration file will be created in `~/.config/gh-mrva/config.yml`. The following options are supported:
+- `codeql_path`: Path to CodeQL distribution
 - `controller`: NWO of the MRVA controller to use
-- `listFile`: Path to the JSON file containing the target repos
+- `list_file`: Path to the JSON file containing the target repos
 
 ## Usage
 
