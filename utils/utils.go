@@ -202,6 +202,25 @@ func ResolveRepositories(listFile string, list string) ([]string, error) {
 	return repoLists[list], nil
 }
 
+func GetRepositoryListNames(listFile string) []string {
+	jsonFile, err := os.Open(listFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer jsonFile.Close()
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	var repoLists map[string][]string
+	err = json.Unmarshal(byteValue, &repoLists)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var listNames []string
+	for listName := range repoLists {
+		listNames = append(listNames, listName)
+	}
+	return listNames
+}
+
 func ResolveQueries(codeqlPath string, querySuite string) []string {
 	args := []string{"resolve", "queries", "--format=json", querySuite}
 	jsonBytes, err := RunCodeQLCommand(codeqlPath, false, args...)

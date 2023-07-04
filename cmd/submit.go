@@ -121,6 +121,15 @@ func submitQuery() {
 		queries = utils.ResolveQueries(codeqlPath, querySuiteFile)
 	}
 
+	if len(repositories) == 0 {
+		fmt.Println("No repositories found.")
+		fmt.Printf("Known repository list names in %s:\n", listFile)
+		for _, list := range utils.GetRepositoryListNames(listFile) {
+			fmt.Printf("  %s\n", list)
+		}
+		os.Exit(1)
+	}
+
 	fmt.Printf("Submitting %d queries for %d repositories\n", len(queries), len(repositories))
 	var runs []models.Run
 	for _, query := range queries {
