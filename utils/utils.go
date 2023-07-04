@@ -1,27 +1,28 @@
 package utils
 
 import (
-  "archive/zip"
-  "sync"
-	"text/template"
-	"github.com/google/uuid"
+	"archive/zip"
+	"bytes"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"os/exec"
 	"path/filepath"
-  "strings"
-  "os/exec"
-  "bytes"
-  "encoding/json"
-  "fmt"
-  "time"
-  "os"
-  "gopkg.in/yaml.v3"
-  "io/ioutil"
-  "log"
-  "errors"
+	"strings"
+	"sync"
+	"text/template"
+	"time"
 
+	"github.com/google/uuid"
+	"gopkg.in/yaml.v3"
+
+	"github.com/GitHubSecurityLab/gh-mrva/models"
 	"github.com/cli/go-gh"
 	"github.com/cli/go-gh/pkg/api"
-  "github.com/GitHubSecurityLab/gh-mrva/models"
 )
 
 var (
@@ -30,19 +31,19 @@ var (
 )
 
 func GetSessionsFilePath() string {
-  return sessionsFilePath
+	return sessionsFilePath
 }
 
 func SetSessionsFilePath(path string) {
-  sessionsFilePath = path
+	sessionsFilePath = path
 }
 
 func GetConfigFilePath() string {
-  return configFilePath
+	return configFilePath
 }
 
 func SetConfigFilePath(path string) {
-  configFilePath = path
+	configFilePath = path
 }
 
 func GetSessions() (map[string]models.Session, error) {
@@ -205,14 +206,14 @@ func ResolveQueries(codeqlPath string, querySuite string) []string {
 	args := []string{"resolve", "queries", "--format=json", querySuite}
 	jsonBytes, err := RunCodeQLCommand(codeqlPath, false, args...)
 	var queries []string
-  if strings.TrimSpace(string(jsonBytes)) == "" {
-    fmt.Println("No queries found in the specified query suite.")
-    os.Exit(1)
-  }
+	if strings.TrimSpace(string(jsonBytes)) == "" {
+		fmt.Println("No queries found in the specified query suite.")
+		os.Exit(1)
+	}
 	err = json.Unmarshal(jsonBytes, &queries)
 	if err != nil {
 		fmt.Println(err)
-    os.Exit(1)
+		os.Exit(1)
 	}
 	return queries
 }
@@ -356,7 +357,6 @@ defaultSuite:
 
 	return bundleBase64, nil
 }
-
 
 func PackPacklist(codeqlPath string, dir string, includeQueries bool) []string {
 	// since 2.7.1, packlist returns an object with a "paths" property that is a list of packs.
@@ -557,4 +557,3 @@ func DownloadDatabase(nwo string, language string, outputDir string) error {
 	err = ioutil.WriteFile(targetPath, bytes, os.ModePerm)
 	return nil
 }
-

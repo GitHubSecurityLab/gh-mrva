@@ -1,37 +1,35 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
 	"fmt"
-  "log"
-  "os"
+	"log"
+	"os"
 
+	"github.com/GitHubSecurityLab/gh-mrva/config"
+	"github.com/GitHubSecurityLab/gh-mrva/models"
+	"github.com/GitHubSecurityLab/gh-mrva/utils"
 	"github.com/spf13/cobra"
-  "github.com/GitHubSecurityLab/gh-mrva/utils"
-  "github.com/GitHubSecurityLab/gh-mrva/config"
-  "github.com/GitHubSecurityLab/gh-mrva/models"
-
 )
 
 var (
-  controller     string
-  codeqlPath     string
-  listFile       string
-  listName       string
-  language       string
-  sessionName    string
-  queryFile      string
-  querySuiteFile string
+	controller     string
+	codeqlPath     string
+	listFile       string
+	listName       string
+	language       string
+	sessionName    string
+	queryFile      string
+	querySuiteFile string
 )
 var submitCmd = &cobra.Command{
 	Use:   "submit",
 	Short: "Submit a query or query suite to a MRVA controller.",
-	Long: `Submit a query or query suite to a MRVA controller.`,
+	Long:  `Submit a query or query suite to a MRVA controller.`,
 	Run: func(cmd *cobra.Command, args []string) {
-    submitQuery()
+		submitQuery()
 	},
 }
 
@@ -40,18 +38,18 @@ func init() {
 	submitCmd.Flags().StringVarP(&sessionNameFlag, "session", "s", "", "Session name")
 	submitCmd.Flags().StringVarP(&languageFlag, "language", "l", "", "DB language")
 	submitCmd.Flags().StringVarP(&queryFileFlag, "query", "q", "", "Path to query file")
-	submitCmd.Flags().StringVarP(&querySuiteFileFlag, "query-suite","x", "", "Path to query suite file")
+	submitCmd.Flags().StringVarP(&querySuiteFileFlag, "query-suite", "x", "", "Path to query suite file")
 	submitCmd.Flags().StringVarP(&controllerFlag, "controller", "c", "", "MRVA controller repository (overrides config file)")
 	submitCmd.Flags().StringVarP(&listFileFlag, "list-file", "f", "", "Path to repo list file (overrides config file)")
 	submitCmd.Flags().StringVarP(&listFlag, "list", "i", "", "Name of repo list")
 	submitCmd.Flags().StringVarP(&codeqlPathFlag, "codeql-path", "p", "", "Path to CodeQL distribution (overrides config file)")
 	submitCmd.MarkFlagRequired("session")
 	submitCmd.MarkFlagRequired("language")
-  submitCmd.MarkFlagsMutuallyExclusive("query", "query-suite")
+	submitCmd.MarkFlagsMutuallyExclusive("query", "query-suite")
 }
 
 func submitQuery() {
-  configData, err := utils.GetConfig()
+	configData, err := utils.GetConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -88,26 +86,26 @@ func submitQuery() {
 	}
 
 	if controller == "" {
-    fmt.Println("Please specify a controller.")
+		fmt.Println("Please specify a controller.")
 		os.Exit(1)
-  }
-  if listFile == "" {
-    fmt.Println("Please specify a list file.")
+	}
+	if listFile == "" {
+		fmt.Println("Please specify a list file.")
 		os.Exit(1)
-  }
-  if listName == "" {
-    fmt.Println("Please specify a list name.")
+	}
+	if listName == "" {
+		fmt.Println("Please specify a list name.")
 		os.Exit(1)
-  }
-  if queryFile == "" && querySuiteFile == "" {
-    fmt.Println("Please specify a query or query suite.")
+	}
+	if queryFile == "" && querySuiteFile == "" {
+		fmt.Println("Please specify a query or query suite.")
 		os.Exit(1)
-  }
+	}
 
-  if _, _, _, err := utils.LoadSession(sessionName); err == nil {
-    fmt.Println("Session already exists.")
-    os.Exit(1)
-  }
+	if _, _, _, err := utils.LoadSession(sessionName); err == nil {
+		fmt.Println("Session already exists.")
+		os.Exit(1)
+	}
 
 	// read list of target repositories
 	repositories, err := utils.ResolveRepositories(listFile, listName)
@@ -159,4 +157,3 @@ func submitQuery() {
 	}
 	fmt.Println("Done!")
 }
-
