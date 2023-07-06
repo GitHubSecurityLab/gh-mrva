@@ -50,6 +50,8 @@ type RepoWithFindings struct {
 }
 
 type Results struct {
+	Name                                   string             `json:"name"`
+  Status                                 string             `json:"status"`
   Runs                                   []RunStatus        `json:"runs"`
   ResositoriesWithFindings               []RepoWithFindings `json:"repositories_with_findings"`
   TotalFindingsCount                     int                `json:"total_findings_count"`

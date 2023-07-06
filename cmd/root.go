@@ -32,6 +32,7 @@ import (
 
 var (
   sessionNameFlag string
+  sessionPrefixFlag string
   outputDirFlag string
   downloadDBsFlag bool
   nwoFlag string

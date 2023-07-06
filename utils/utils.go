@@ -71,6 +71,22 @@ func LoadSession(name string) (string, []models.Run, string, error) {
 	return "", nil, "", errors.New("No session found for " + name)
 }
 
+func GetSessionsStartingWith(prefix string) ([]string, error) {
+  sessions, err := GetSessions()
+  if err != nil {
+    return nil, err
+  }
+  var matchingSessions []string
+  if sessions != nil {
+    for session := range sessions {
+      if strings.HasPrefix(session, prefix) {
+        matchingSessions = append(matchingSessions, session)
+      }
+    }
+  }
+  return matchingSessions, nil
+}
+
 func GetRunDetails(controller string, runId int) (map[string]interface{}, error) {
 	opts := api.ClientOptions{
 		Headers: map[string]string{"Accept": "application/vnd.github.v3+json"},
