@@ -5,16 +5,16 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-  "sync"
-  "errors"
+	"errors"
 	"fmt"
-  "os"
-  "path/filepath"
-  "strings"
-  "log"
-  "github.com/GitHubSecurityLab/gh-mrva/utils"
-  "github.com/GitHubSecurityLab/gh-mrva/models"
-  "github.com/GitHubSecurityLab/gh-mrva/config"
+	"github.com/GitHubSecurityLab/gh-mrva/config"
+	"github.com/GitHubSecurityLab/gh-mrva/models"
+	"github.com/GitHubSecurityLab/gh-mrva/utils"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 )
@@ -22,9 +22,9 @@ import (
 var downloadCmd = &cobra.Command{
 	Use:   "download",
 	Short: "Downloads the artifacts associated to a given session.",
-	Long: `Downloads the artifacts associated to a given session.`,
+	Long:  `Downloads the artifacts associated to a given session.`,
 	Run: func(cmd *cobra.Command, args []string) {
-    downloadArtifacts()
+		downloadArtifacts()
 	},
 }
 

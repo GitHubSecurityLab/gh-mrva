@@ -1,7 +1,7 @@
 package models
 
 import (
-  "time"
+	"time"
 )
 
 type Run struct {

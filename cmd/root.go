@@ -22,33 +22,35 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"github.com/GitHubSecurityLab/gh-mrva/utils"
+	"log"
 	"os"
-  "log"
-  "github.com/GitHubSecurityLab/gh-mrva/utils"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
 
 var (
-  sessionNameFlag string
-  sessionPrefixFlag string
-  outputDirFlag string
-  downloadDBsFlag bool
-  nwoFlag string
-  jsonFlag bool
-  languageFlag string
-  listFileFlag string
-  listFlag string
-  codeqlPathFlag string
-  controllerFlag string
-  queryFileFlag string
-  querySuiteFileFlag string
-) 
+	sessionNameFlag    string
+	runIdFlag          int
+	sessionPrefixFlag  string
+	outputDirFlag      string
+	outputFilenameFlag string
+	downloadDBsFlag    bool
+	nwoFlag            string
+	jsonFlag           bool
+	languageFlag       string
+	listFileFlag       string
+	listFlag           string
+	codeqlPathFlag     string
+	controllerFlag     string
+	queryFileFlag      string
+	querySuiteFileFlag string
+)
 var rootCmd = &cobra.Command{
 	Use:   "gh-mrva",
 	Short: "Run CodeQL queries at scale using GitHub's Multi-Repository Variant Analysis (MRVA)",
-	Long: `Run CodeQL queries at scale using GitHub's Multi-Repository Variant Analysis (MRVA)`,
+	Long:  `Run CodeQL queries at scale using GitHub's Multi-Repository Variant Analysis (MRVA)`,
 }
 
 func Execute() {
@@ -67,10 +69,10 @@ func init() {
 		}
 		configPath = filepath.Join(homePath, ".config")
 	}
-  configFilePath := filepath.Join(configPath, "gh-mrva", "config.yml")
-  utils.SetConfigFilePath(configFilePath)
+	configFilePath := filepath.Join(configPath, "gh-mrva", "config.yml")
+	utils.SetConfigFilePath(configFilePath)
 
-  sessionsFilePath := filepath.Join(configPath, "gh-mrva", "sessions.yml")
+	sessionsFilePath := filepath.Join(configPath, "gh-mrva", "sessions.yml")
 	if _, err := os.Stat(sessionsFilePath); os.IsNotExist(err) {
 		err := os.MkdirAll(filepath.Dir(sessionsFilePath), os.ModePerm)
 		if err != nil {
@@ -83,5 +85,5 @@ func init() {
 		}
 		sessionsFile.Close()
 	}
-  utils.SetSessionsFilePath(sessionsFilePath)
+	utils.SetSessionsFilePath(sessionsFilePath)
 }

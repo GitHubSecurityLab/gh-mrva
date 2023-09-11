@@ -1,27 +1,28 @@
 package utils
 
 import (
-  "archive/zip"
-  "sync"
-	"text/template"
-	"github.com/google/uuid"
+	"archive/zip"
+	"bufio"
+	"bytes"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/google/uuid"
+	"gopkg.in/yaml.v3"
+	"io"
+	"log"
+	"os"
+	"os/exec"
 	"path/filepath"
-  "strings"
-  "os/exec"
-  "bytes"
-  "encoding/json"
-  "fmt"
-  "time"
-  "os"
-  "gopkg.in/yaml.v3"
-  "io/ioutil"
-  "log"
-  "errors"
+	"strings"
+	"sync"
+	"text/template"
+	"time"
 
+	"github.com/GitHubSecurityLab/gh-mrva/models"
 	"github.com/cli/go-gh"
 	"github.com/cli/go-gh/pkg/api"
-  "github.com/GitHubSecurityLab/gh-mrva/models"
 )
 
 var (
@@ -30,23 +31,23 @@ var (
 )
 
 func GetSessionsFilePath() string {
-  return sessionsFilePath
+	return sessionsFilePath
 }
 
 func SetSessionsFilePath(path string) {
-  sessionsFilePath = path
+	sessionsFilePath = path
 }
 
 func GetConfigFilePath() string {
-  return configFilePath
+	return configFilePath
 }
 
 func SetConfigFilePath(path string) {
-  configFilePath = path
+	configFilePath = path
 }
 
 func GetSessions() (map[string]models.Session, error) {
-	sessionsFile, err := ioutil.ReadFile(sessionsFilePath)
+	sessionsFile, err := os.ReadFile(sessionsFilePath)
 	var sessions map[string]models.Session
 	if err != nil {
 		return sessions, err
@@ -72,19 +73,19 @@ func LoadSession(name string) (string, []models.Run, string, error) {
 }
 
 func GetSessionsStartingWith(prefix string) ([]string, error) {
-  sessions, err := GetSessions()
-  if err != nil {
-    return nil, err
-  }
-  var matchingSessions []string
-  if sessions != nil {
-    for session := range sessions {
-      if strings.HasPrefix(session, prefix) {
-        matchingSessions = append(matchingSessions, session)
-      }
-    }
-  }
-  return matchingSessions, nil
+	sessions, err := GetSessions()
+	if err != nil {
+		return nil, err
+	}
+	var matchingSessions []string
+	if sessions != nil {
+		for session := range sessions {
+			if strings.HasPrefix(session, prefix) {
+				matchingSessions = append(matchingSessions, session)
+			}
+		}
+	}
+	return matchingSessions, nil
 }
 
 func GetRunDetails(controller string, runId int) (map[string]interface{}, error) {
@@ -148,7 +149,7 @@ func SaveSession(name string, controller string, runs []models.Run, language str
 		return err
 	}
 	// write sessions to file
-	err = ioutil.WriteFile(sessionsFilePath, sessionsYaml, os.ModePerm)
+	err = os.WriteFile(sessionsFilePath, sessionsYaml, os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -189,7 +190,7 @@ func SubmitRun(controller string, language string, repoChunk []string, bundle st
 }
 
 func GetConfig() (models.Config, error) {
-	configFile, err := ioutil.ReadFile(configFilePath)
+	configFile, err := os.ReadFile(configFilePath)
 	var configData models.Config
 	if err != nil {
 		return configData, err
@@ -208,7 +209,7 @@ func ResolveRepositories(listFile string, list string) ([]string, error) {
 		return nil, err
 	}
 	defer jsonFile.Close()
-	byteValue, _ := ioutil.ReadAll(jsonFile)
+	byteValue, _ := io.ReadAll(jsonFile)
 	var repoLists map[string][]string
 	err = json.Unmarshal(byteValue, &repoLists)
 	if err != nil {
@@ -259,14 +260,14 @@ func ResolveQueries(codeqlPath string, querySuite string) []string {
 	args := []string{"resolve", "queries", "--format=json", querySuite}
 	jsonBytes, err := RunCodeQLCommand(codeqlPath, false, args...)
 	var queries []string
-  if strings.TrimSpace(string(jsonBytes)) == "" {
-    fmt.Println("No queries found in the specified query suite.")
-    os.Exit(1)
-  }
+	if strings.TrimSpace(string(jsonBytes)) == "" {
+		fmt.Println("No queries found in the specified query suite.")
+		os.Exit(1)
+	}
 	err = json.Unmarshal(jsonBytes, &queries)
 	if err != nil {
 		fmt.Println(err)
-    os.Exit(1)
+		os.Exit(1)
 	}
 	return queries
 }
@@ -288,7 +289,7 @@ func GenerateQueryPack(codeqlPath string, queryFile string, language string) (st
 	fmt.Printf("Generating query pack for %s\n", queryFile)
 
 	// create a temporary directory to hold the query pack
-	queryPackDir, err := ioutil.TempDir("", "query-pack-")
+	queryPackDir, err := os.MkdirTemp("", "query-pack-")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -406,7 +407,7 @@ defaultSuite:
 		return "", "", fmt.Errorf("Failed to open bundle file: %v\n", err)
 	}
 	defer bundleFile.Close()
-	bundleBytes, err := ioutil.ReadAll(bundleFile)
+	bundleBytes, err := io.ReadAll(bundleFile)
 	if err != nil {
 		return "", "", fmt.Errorf("Failed to read bundle file: %v\n", err)
 	}
@@ -449,7 +450,7 @@ func FindPackRoot(queryFile string) string {
 
 func FixPackFile(queryPackDir string, packRelativePath string) error {
 	packPath := filepath.Join(queryPackDir, "qlpack.yml")
-	packFile, err := ioutil.ReadFile(packPath)
+	packFile, err := os.ReadFile(packPath)
 	if err != nil {
 		return err
 	}
@@ -490,7 +491,7 @@ func FixPackFile(queryPackDir string, packRelativePath string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(packPath, packFile, 0644)
+	err = os.WriteFile(packPath, packFile, 0644)
 	if err != nil {
 		return err
 	}
@@ -502,11 +503,11 @@ func CopyFile(srcPath string, targetPath string) error {
 	if err != nil {
 		return err
 	}
-	bytesRead, err := ioutil.ReadFile(srcPath)
+	bytesRead, err := os.ReadFile(srcPath)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(targetPath, bytesRead, 0644)
+	err = os.WriteFile(targetPath, bytesRead, 0644)
 	if err != nil {
 		return err
 	}
@@ -538,7 +539,7 @@ func downloadArtifact(url string, outputDir string, nwo string) error {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -557,7 +558,7 @@ func downloadArtifact(url string, outputDir string, nwo string) error {
 			log.Fatal(err)
 		}
 		defer f.Close()
-		bytes, err := ioutil.ReadAll(f)
+		bytes, err := io.ReadAll(f)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -569,7 +570,7 @@ func downloadArtifact(url string, outputDir string, nwo string) error {
 			extension = "sarif"
 		}
 		resultPath = filepath.Join(outputDir, fmt.Sprintf("%s.%s", strings.Replace(nwo, "/", "_", -1), extension))
-		err = ioutil.WriteFile(resultPath, bytes, os.ModePerm)
+		err = os.WriteFile(resultPath, bytes, os.ModePerm)
 		if err != nil {
 			return err
 		}
@@ -608,11 +609,11 @@ func DownloadDatabase(nwo string, language string, outputDir string) error {
 	}
 	defer resp.Body.Close()
 
-	bytes, err := ioutil.ReadAll(resp.Body)
+	bytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(targetPath, bytes, os.ModePerm)
+	err = os.WriteFile(targetPath, bytes, os.ModePerm)
 	return nil
 }
 
