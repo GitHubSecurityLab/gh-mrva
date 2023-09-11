@@ -126,11 +126,11 @@ func submitQuery() {
 	fmt.Printf("Submitting %d queries for %d repositories\n", len(queries), len(repositories))
 	var runs []models.Run
 	for _, query := range queries {
-		encodedBundle, err := utils.GenerateQueryPack(codeqlPath, query, language)
+		encodedBundle, queryId, err := utils.GenerateQueryPack(codeqlPath, query, language)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("Generated encoded bundle for %s\n", query)
+		fmt.Printf("Generated encoded bundle for %s (%s)\n", query, queryId)
 
 		var chunks [][]string
 		for i := 0; i < len(repositories); i += config.MAX_MRVA_REPOSITORIES {
@@ -145,7 +145,7 @@ func submitQuery() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			runs = append(runs, models.Run{Id: id, Query: query})
+			runs = append(runs, models.Run{Id: id, Query: query, QueryId: queryId})
 		}
 
 	}

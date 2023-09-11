@@ -217,6 +217,44 @@ func ResolveRepositories(listFile string, list string) ([]string, error) {
 	return repoLists[list], nil
 }
 
+func ResolveQueryId(queryFile string) (string, error) {
+	// read contents of queryFile into a string
+	queryFile, err := filepath.Abs(queryFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if _, err := os.Stat(queryFile); errors.Is(err, os.ErrNotExist) {
+		log.Fatal(fmt.Sprintf("Query file %s does not exist", queryFile))
+	}
+	file, err := os.Open(queryFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanLines)
+	var fileLines []string
+	for scanner.Scan() {
+		fileLines = append(fileLines, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+	// find the query id which is a line that starts with ` * @id QUERY_ID`
+	queryId := ""
+	for _, line := range fileLines {
+		if strings.HasPrefix(line, " * @id ") {
+			queryId = strings.TrimPrefix(line, " * @id ")
+			break
+		}
+	}
+	fmt.Println("Query ID:", queryId)
+	if queryId == "" {
+		return "", errors.New("Failed to find query id in query file")
+	}
+	return queryId, nil
+}
+
 func ResolveQueries(codeqlPath string, querySuite string) []string {
 	args := []string{"resolve", "queries", "--format=json", querySuite}
 	jsonBytes, err := RunCodeQLCommand(codeqlPath, false, args...)
@@ -246,7 +284,7 @@ func RunCodeQLCommand(codeqlPath string, combined bool, args ...string) ([]byte,
 	}
 }
 
-func GenerateQueryPack(codeqlPath string, queryFile string, language string) (string, error) {
+func GenerateQueryPack(codeqlPath string, queryFile string, language string) (string, string, error) {
 	fmt.Printf("Generating query pack for %s\n", queryFile)
 
 	// create a temporary directory to hold the query pack
@@ -262,6 +300,10 @@ func GenerateQueryPack(codeqlPath string, queryFile string, language string) (st
 	}
 	if _, err := os.Stat(queryFile); errors.Is(err, os.ErrNotExist) {
 		log.Fatal(fmt.Sprintf("Query file %s does not exist", queryFile))
+	}
+	queryId, err := ResolveQueryId(queryFile)
+	if err != nil {
+		log.Fatal(err)
 	}
 	originalPackRoot := FindPackRoot(queryFile)
 	packRelativePath, _ := filepath.Rel(originalPackRoot, queryFile)
@@ -346,7 +388,7 @@ defaultSuite:
 	stdouterr, err := RunCodeQLCommand(codeqlPath, true, args...)
 	if err != nil {
 		fmt.Printf("`codeql pack bundle` failed with error: %v\n", string(stdouterr))
-		return "", fmt.Errorf("Failed to install query pack: %v", err)
+		return "", "", fmt.Errorf("Failed to install query pack: %v", err)
 	}
 	// bundle the query pack
 	fmt.Print("Compiling and bundling the QLPack (This may take a while)\n")
@@ -355,22 +397,22 @@ defaultSuite:
 	stdouterr, err = RunCodeQLCommand(codeqlPath, true, args...)
 	if err != nil {
 		fmt.Printf("`codeql pack bundle` failed with error: %v\n", string(stdouterr))
-		return "", fmt.Errorf("Failed to bundle query pack: %v\n", err)
+		return "", "", fmt.Errorf("Failed to bundle query pack: %v\n", err)
 	}
 
 	// open the bundle file and encode it as base64
 	bundleFile, err := os.Open(bundlePath)
 	if err != nil {
-		return "", fmt.Errorf("Failed to open bundle file: %v\n", err)
+		return "", "", fmt.Errorf("Failed to open bundle file: %v\n", err)
 	}
 	defer bundleFile.Close()
 	bundleBytes, err := ioutil.ReadAll(bundleFile)
 	if err != nil {
-		return "", fmt.Errorf("Failed to read bundle file: %v\n", err)
+		return "", "", fmt.Errorf("Failed to read bundle file: %v\n", err)
 	}
 	bundleBase64 := base64.StdEncoding.EncodeToString(bundleBytes)
 
-	return bundleBase64, nil
+	return bundleBase64, queryId, nil
 }
 
 

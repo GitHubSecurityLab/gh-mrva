@@ -5,8 +5,9 @@ import (
 )
 
 type Run struct {
-	Id    int    `yaml:"id"`
-	Query string `yaml:"query"`
+	Id      int    `yaml:"id"`
+	Query   string `yaml:"query"`
+	QueryId string `yaml:"query_id"`
 }
 
 type Session struct {
@@ -36,17 +37,20 @@ type DownloadTask struct {
 }
 
 type RunStatus struct {
-  Id            int    `json:"id"`
-  Query         string `json:"query"`
-  Status        string `json:"status"`
-  FailureReason string `json:"failure_reason"`
+	Id            int    `json:"id"`
+	Query         string `json:"query"`
+	QueryId       string `json:"query_id"`
+	Status        string `json:"status"`
+	FailureReason string `json:"failure_reason"`
 }
 
 type RepoWithFindings struct {
-  Nwo   string `json:"nwo"`
-  Count int    `json:"count"`
-  RunId int    `json:"run_id"`
-  Stars int    `json:"stars"`
+	Query   string `json:"query"`
+	QueryId string `json:"query_id"`
+	Nwo     string `json:"nwo"`
+	Count   int    `json:"count"`
+	RunId   int    `json:"run_id"`
+	Stars   int    `json:"stars"`
 }
 
 type Results struct {

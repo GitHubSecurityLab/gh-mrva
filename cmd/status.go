@@ -87,6 +87,7 @@ func sessionStatus() {
 			results.Runs = append(results.Runs, models.RunStatus{
 				Id:            run.Id,
 				Query:         run.Query,
+				QueryId:       run.QueryId,
 				Status:        status,
 				FailureReason: failure_reason,
 			})
@@ -99,10 +100,12 @@ func sessionStatus() {
 						results.TotalFindingsCount += int(repo.(map[string]interface{})["result_count"].(float64))
 						repoInfo := repo.(map[string]interface{})["repository"].(map[string]interface{})
 						results.ResositoriesWithFindings = append(results.ResositoriesWithFindings, models.RepoWithFindings{
-							Nwo:   repoInfo["full_name"].(string),
-							Count: int(repo.(map[string]interface{})["result_count"].(float64)),
-							RunId: run.Id,
-							Stars: int(repoInfo["stargazers_count"].(float64)),
+							Nwo:     repoInfo["full_name"].(string),
+							Query:   run.Query,
+							QueryId: run.QueryId,
+							Count:   int(repo.(map[string]interface{})["result_count"].(float64)),
+							RunId:   run.Id,
+							Stars:   int(repoInfo["stargazers_count"].(float64)),
 						})
 					}
 				} else if repo.(map[string]interface{})["analysis_status"].(string) == "failed" {
@@ -149,7 +152,7 @@ func sessionStatus() {
 			fmt.Println("Total findings:", results.TotalFindingsCount)
 			fmt.Println("Repositories with findings:")
 			for _, repo := range results.ResositoriesWithFindings {
-				fmt.Println("  ", repo.Nwo, ":", repo.Count)
+				fmt.Printf("  %s (%s): %d\n", repo.Nwo, repo.QueryId, repo.Count)
 			}
 		}
 	}
