@@ -28,12 +28,13 @@ type Config struct {
 }
 
 type DownloadTask struct {
-	RunId      int
-	Nwo        string
-	Controller string
-	Artifact   string
-	OutputDir  string
-	Language   string
+	RunId          int
+	Nwo            string
+	Controller     string
+	Artifact       string
+	OutputDir      string
+	OutputFilename string
+	Language       string
 }
 
 type RunStatus struct {
@@ -55,17 +56,16 @@ type RepoWithFindings struct {
 
 type Results struct {
 	Name                                   string             `json:"name"`
-  Status                                 string             `json:"status"`
-  Runs                                   []RunStatus        `json:"runs"`
-  ResositoriesWithFindings               []RepoWithFindings `json:"repositories_with_findings"`
-  TotalFindingsCount                     int                `json:"total_findings_count"`
-  TotalSuccessfulScans                   int                `json:"total_successful_scans"`
-  TotalFailedScans                       int                `json:"total_failed_scans"`
-  TotalRepositoriesWithFindings          int                `json:"total_repositories_with_findings"`
-  TotalSkippedRepositories               int                `json:"total_skipped_repositories"`
-  TotalSkippedAccessMismatchRepositories int                `json:"total_skipped_access_mismatch_repositories"`
-  TotalSkippedNotFoundRepositories       int                `json:"total_skipped_not_found_repositories"`
-  TotalSkippedNoDatabaseRepositories     int                `json:"total_skipped_no_database_repositories"`
-  TotalSkippedOverLimitRepositories      int                `json:"total_skipped_over_limit_repositories"`
+	Status                                 string             `json:"status"`
+	Runs                                   []RunStatus        `json:"runs"`
+	ResositoriesWithFindings               []RepoWithFindings `json:"repositories_with_findings"`
+	TotalFindingsCount                     int                `json:"total_findings_count"`
+	TotalSuccessfulScans                   int                `json:"total_successful_scans"`
+	TotalFailedScans                       int                `json:"total_failed_scans"`
+	TotalRepositoriesWithFindings          int                `json:"total_repositories_with_findings"`
+	TotalSkippedRepositories               int                `json:"total_skipped_repositories"`
+	TotalSkippedAccessMismatchRepositories int                `json:"total_skipped_access_mismatch_repositories"`
+	TotalSkippedNotFoundRepositories       int                `json:"total_skipped_not_found_repositories"`
+	TotalSkippedNoDatabaseRepositories     int                `json:"total_skipped_no_database_repositories"`
+	TotalSkippedOverLimitRepositories      int                `json:"total_skipped_over_limit_repositories"`
 }
-

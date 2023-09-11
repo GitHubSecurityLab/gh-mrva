@@ -59,6 +59,23 @@ func GetSessions() (map[string]models.Session, error) {
 	return sessions, nil
 }
 
+func LoadRun(id int) (string, []models.Run, string, error) {
+	sessions, err := GetSessions()
+	if err != nil {
+		return "", nil, "", err
+	}
+	if sessions != nil {
+		for _, session := range sessions {
+			for _, run := range session.Runs {
+				if run.Id == id {
+					return session.Controller, []models.Run{run}, session.Language, nil
+				}
+			}
+		}
+	}
+	return "", nil, "", errors.New("No run found for " + fmt.Sprint(id))
+}
+
 func LoadSession(name string) (string, []models.Run, string, error) {
 	sessions, err := GetSessions()
 	if err != nil {
@@ -416,7 +433,6 @@ defaultSuite:
 	return bundleBase64, queryId, nil
 }
 
-
 func PackPacklist(codeqlPath string, dir string, includeQueries bool) []string {
 	// since 2.7.1, packlist returns an object with a "paths" property that is a list of packs.
 	args := []string{"pack", "packlist", "--format=json"}
@@ -518,17 +534,17 @@ func DownloadWorker(wg *sync.WaitGroup, taskChannel <-chan models.DownloadTask, 
 	defer wg.Done()
 	for task := range taskChannel {
 		if task.Artifact == "artifact" {
-			DownloadResults(task.Controller, task.RunId, task.Nwo, task.OutputDir)
+			DownloadResults(task.Controller, task.RunId, task.Nwo, task.OutputDir, task.OutputFilename)
 			resultChannel <- task
 		} else if task.Artifact == "database" {
-			fmt.Println("Downloading database", task.Nwo, task.Language, task.OutputDir)
-			DownloadDatabase(task.Nwo, task.Language, task.OutputDir)
+			fmt.Println("Downloading database", task.Nwo, task.Language, task.OutputDir, task.OutputFilename)
+			DownloadDatabase(task.Nwo, task.Language, task.OutputDir, task.OutputFilename)
 			resultChannel <- task
 		}
 	}
 }
 
-func downloadArtifact(url string, outputDir string, nwo string) error {
+func downloadArtifact(url string, outputDir string, nwo string, outputFilename string) error {
 	client, err := gh.HTTPClient(nil)
 	if err != nil {
 		return err
@@ -562,14 +578,16 @@ func downloadArtifact(url string, outputDir string, nwo string) error {
 		if err != nil {
 			log.Fatal(err)
 		}
-		extension := ""
-		resultPath := ""
-		if zf.Name == "results.bqrs" {
-			extension = "bqrs"
-		} else if zf.Name == "results.sarif" {
-			extension = "sarif"
+		if outputFilename == "" {
+			extension := ""
+			if zf.Name == "results.bqrs" {
+				extension = "bqrs"
+			} else if zf.Name == "results.sarif" {
+				extension = "sarif"
+			}
+			outputFilename = fmt.Sprintf("%s.%s", strings.Replace(nwo, "/", "_", -1), extension)
 		}
-		resultPath = filepath.Join(outputDir, fmt.Sprintf("%s.%s", strings.Replace(nwo, "/", "_", -1), extension))
+		resultPath := filepath.Join(outputDir, outputFilename)
 		err = os.WriteFile(resultPath, bytes, os.ModePerm)
 		if err != nil {
 			return err
@@ -579,23 +597,26 @@ func downloadArtifact(url string, outputDir string, nwo string) error {
 	return errors.New("No results.sarif file found in artifact")
 }
 
-func DownloadResults(controller string, runId int, nwo string, outputDir string) error {
+func DownloadResults(controller string, runId int, nwo string, outputDir string, outputFilename string) error {
 	// download artifact (BQRS or SARIF)
 	runRepositoryDetails, err := GetRunRepositoryDetails(controller, runId, nwo)
 	if err != nil {
 		return errors.New("Failed to get run repository details")
 	}
 	// download the results
-	err = downloadArtifact(runRepositoryDetails["artifact_url"].(string), outputDir, nwo)
+	err = downloadArtifact(runRepositoryDetails["artifact_url"].(string), outputDir, nwo, outputFilename)
 	if err != nil {
 		return errors.New("Failed to download artifact")
 	}
 	return nil
 }
 
-func DownloadDatabase(nwo string, language string, outputDir string) error {
+func DownloadDatabase(nwo string, language string, outputDir string, outputFilename string) error {
 	dnwo := strings.Replace(nwo, "/", "_", -1)
-	targetPath := filepath.Join(outputDir, fmt.Sprintf("%s_%s_db.zip", dnwo, language))
+	if outputFilename == "" {
+		outputFilename = fmt.Sprintf("%s_%s_db.zip", dnwo, language)
+	}
+	targetPath := filepath.Join(outputDir, outputFilename)
 	opts := api.ClientOptions{
 		Headers: map[string]string{"Accept": "application/zip"},
 	}
@@ -616,4 +637,3 @@ func DownloadDatabase(nwo string, language string, outputDir string) error {
 	err = os.WriteFile(targetPath, bytes, os.ModePerm)
 	return nil
 }
-

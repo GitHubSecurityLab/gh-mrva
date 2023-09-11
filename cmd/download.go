@@ -1,6 +1,5 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -31,11 +30,13 @@ var downloadCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(downloadCmd)
 	downloadCmd.Flags().StringVarP(&sessionNameFlag, "session", "s", "", "Session name to be downloaded")
+	downloadCmd.Flags().IntVarP(&runIdFlag, "run", "r", 0, "Run ID to be downloaded")
 	downloadCmd.Flags().StringVarP(&outputDirFlag, "output-dir", "o", "", "Output directory")
+	downloadCmd.Flags().StringVarP(&outputFilenameFlag, "output-filename", "f", "", "Output filename")
 	downloadCmd.Flags().BoolVarP(&downloadDBsFlag, "download-dbs", "d", false, "Download databases (optional)")
 	downloadCmd.Flags().StringVarP(&nwoFlag, "nwo", "n", "", "Repository to download artifacts for (optional)")
-	downloadCmd.MarkFlagRequired("session")
 	downloadCmd.MarkFlagRequired("output-dir")
+	downloadCmd.MarkFlagsMutuallyExclusive("session", "run")
 }
 
 func downloadArtifacts() {
@@ -48,11 +49,26 @@ func downloadArtifacts() {
 		}
 	}
 
-	controller, runs, language, err := utils.LoadSession(sessionNameFlag)
-	if err != nil {
-		fmt.Println(err)
-	} else if len(runs) == 0 {
-		fmt.Println("No runs found for sessions" + sessionNameFlag)
+	controller := ""
+	language := ""
+	runs := []models.Run{}
+	err := error(nil)
+
+	if sessionNameFlag != "" {
+		controller, runs, language, err = utils.LoadSession(sessionNameFlag)
+		if err != nil {
+			fmt.Println(err)
+		} else if len(runs) == 0 {
+			fmt.Println("No runs found for sessions" + sessionNameFlag)
+		}
+	} else if runIdFlag > 0 {
+		controller, runs, language, err = utils.LoadRun(runIdFlag)
+		if err != nil {
+			fmt.Println(err)
+		}
+	} else {
+		fmt.Println("Please specify a session or run to download artifacts for")
+		return
 	}
 
 	var downloadTasks []models.DownloadTask
@@ -85,24 +101,26 @@ func downloadArtifacts() {
 				_, sarifErr := os.Stat(sarifPath)
 				if errors.Is(bqrsErr, os.ErrNotExist) && errors.Is(sarifErr, os.ErrNotExist) {
 					downloadTasks = append(downloadTasks, models.DownloadTask{
-						RunId:      run.Id,
-						Nwo:        nwo,
-						Controller: controller,
-						Artifact:   "artifact",
-						Language:   language,
-						OutputDir:  outputDirFlag,
+						RunId:          run.Id,
+						Nwo:            nwo,
+						Controller:     controller,
+						Artifact:       "artifact",
+						Language:       language,
+						OutputDir:      outputDirFlag,
+						OutputFilename: outputFilenameFlag,
 					})
 				}
 				if downloadDBsFlag {
 					// check if the database already exists
 					if _, err := os.Stat(targetPath); errors.Is(err, os.ErrNotExist) {
 						downloadTasks = append(downloadTasks, models.DownloadTask{
-							RunId:      run.Id,
-							Nwo:        nwo,
-							Controller: controller,
-							Artifact:   "database",
-							Language:   language,
-							OutputDir:  outputDirFlag,
+							RunId:          run.Id,
+							Nwo:            nwo,
+							Controller:     controller,
+							Artifact:       "database",
+							Language:       language,
+							OutputDir:      outputDirFlag,
+							OutputFilename: outputFilenameFlag,
 						})
 					}
 				}
