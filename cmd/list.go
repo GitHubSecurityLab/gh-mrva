@@ -1,25 +1,24 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
-  "log"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"log"
 
+	"github.com/GitHubSecurityLab/gh-mrva/models"
+	"github.com/GitHubSecurityLab/gh-mrva/utils"
 	"github.com/spf13/cobra"
-  "github.com/GitHubSecurityLab/gh-mrva/utils"
-  "github.com/GitHubSecurityLab/gh-mrva/models"
 )
 
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List saved sessions.",
-	Long: `List saved sessions.`,
+	Long:  `List saved sessions.`,
 	Run: func(cmd *cobra.Command, args []string) {
-    listSessions()
+		listSessions()
 	},
 }
 
