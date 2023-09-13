@@ -103,6 +103,7 @@ func downloadArtifacts() {
 				if errors.Is(bqrsErr, os.ErrNotExist) && errors.Is(sarifErr, os.ErrNotExist) {
 					downloadTasks = append(downloadTasks, models.DownloadTask{
 						RunId:          run.Id,
+						QueryId:        run.QueryId,
 						Nwo:            nwo,
 						Controller:     controller,
 						Artifact:       "artifact",
@@ -111,12 +112,15 @@ func downloadArtifacts() {
 						OutputFilename: outputFilename,
 					})
 				}
+
+				// download database if requested
 				dbPath := filepath.Join(outputDirFlag, fmt.Sprintf("%s_%s_db.zip", outputFilename, language))
 				if downloadDBsFlag {
 					// check if the database already exists
 					if _, err := os.Stat(dbPath); errors.Is(err, os.ErrNotExist) {
 						downloadTasks = append(downloadTasks, models.DownloadTask{
 							RunId:          run.Id,
+							QueryId:        run.QueryId,
 							Nwo:            nwo,
 							Controller:     controller,
 							Artifact:       "database",

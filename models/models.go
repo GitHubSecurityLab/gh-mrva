@@ -29,6 +29,7 @@ type Config struct {
 
 type DownloadTask struct {
 	RunId          int
+	QueryId        string
 	Nwo            string
 	Controller     string
 	Artifact       string

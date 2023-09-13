@@ -2,7 +2,6 @@ package utils
 
 import (
 	"archive/zip"
-	"bufio"
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
@@ -277,7 +276,7 @@ func ResolveQueries(codeqlPath string, querySuite string) []string {
 }
 
 func RunCodeQLCommand(codeqlPath string, combined bool, args ...string) ([]byte, error) {
-	if !strings.Contains(strings.Join(args, " "), "packlist") {
+	if codeqlPath != "" && !strings.Contains(strings.Join(args, " "), "packlist") {
 		args = append(args, fmt.Sprintf("--additional-packs=%s", codeqlPath))
 	}
 	cmd := exec.Command("codeql", args...)
@@ -521,17 +520,17 @@ func DownloadWorker(wg *sync.WaitGroup, taskChannel <-chan models.DownloadTask, 
 	defer wg.Done()
 	for task := range taskChannel {
 		if task.Artifact == "artifact" {
-			DownloadResults(task.Controller, task.RunId, task.Nwo, task.OutputDir, task.OutputFilename)
+			DownloadResults(task)
 			resultChannel <- task
 		} else if task.Artifact == "database" {
 			fmt.Println("Downloading database", task.Nwo, task.Language, task.OutputDir, task.OutputFilename)
-			DownloadDatabase(task.Nwo, task.Language, task.OutputDir, task.OutputFilename)
+			DownloadDatabase(task)
 			resultChannel <- task
 		}
 	}
 }
 
-func downloadArtifact(url string, outputDir string, nwo string, outputFilename string) error {
+func downloadArtifact(url string, task models.DownloadTask) error {
 	client, err := gh.HTTPClient(nil)
 	if err != nil {
 		return err
@@ -561,21 +560,24 @@ func downloadArtifact(url string, outputDir string, nwo string, outputFilename s
 			log.Fatal(err)
 		}
 		defer f.Close()
-		bytes, err := io.ReadAll(f)
+		content, err := io.ReadAll(f)
 		if err != nil {
 			log.Fatal(err)
 		}
-		if outputFilename == "" {
-			extension := ""
-			if zf.Name == "results.bqrs" {
-				extension = "bqrs"
-			} else if zf.Name == "results.sarif" {
-				extension = "sarif"
-			}
-			outputFilename = fmt.Sprintf("%s.%s", strings.Replace(nwo, "/", "_", -1), extension)
+
+		outputDir := task.OutputDir
+		outputFilename := task.OutputFilename
+		if zf.Name == "results.bqrs" {
+			outputFilename = outputFilename + ".bqrs"
+		} else if zf.Name == "results.sarif" {
+			outputFilename = outputFilename + ".sarif"
 		}
+
+		// replace remote-query with real query id
+		content = bytes.Replace(content, []byte("remote-query"), []byte(task.QueryId), -1)
+
 		resultPath := filepath.Join(outputDir, outputFilename)
-		err = os.WriteFile(resultPath, bytes, os.ModePerm)
+		err = os.WriteFile(resultPath, content, os.ModePerm)
 		if err != nil {
 			return err
 		}
@@ -584,26 +586,22 @@ func downloadArtifact(url string, outputDir string, nwo string, outputFilename s
 	return errors.New("No results.sarif file found in artifact")
 }
 
-func DownloadResults(controller string, runId int, nwo string, outputDir string, outputFilename string) error {
+func DownloadResults(task models.DownloadTask) error {
 	// download artifact (BQRS or SARIF)
-	runRepositoryDetails, err := GetRunRepositoryDetails(controller, runId, nwo)
+	runRepositoryDetails, err := GetRunRepositoryDetails(task.Controller, task.RunId, task.Nwo)
 	if err != nil {
 		return errors.New("Failed to get run repository details")
 	}
 	// download the results
-	err = downloadArtifact(runRepositoryDetails["artifact_url"].(string), outputDir, nwo, outputFilename)
+	err = downloadArtifact(runRepositoryDetails["artifact_url"].(string), task)
 	if err != nil {
 		return errors.New("Failed to download artifact")
 	}
 	return nil
 }
 
-func DownloadDatabase(nwo string, language string, outputDir string, outputFilename string) error {
-	dnwo := strings.Replace(nwo, "/", "_", -1)
-	if outputFilename == "" {
-		outputFilename = fmt.Sprintf("%s_%s_db.zip", dnwo, language)
-	}
-	targetPath := filepath.Join(outputDir, outputFilename)
+func DownloadDatabase(task models.DownloadTask) error {
+	targetPath := filepath.Join(task.OutputDir, fmt.Sprintf("%s_db.zip", task.OutputFilename))
 	opts := api.ClientOptions{
 		Headers: map[string]string{"Accept": "application/zip"},
 	}
@@ -611,16 +609,16 @@ func DownloadDatabase(nwo string, language string, outputDir string, outputFilen
 	if err != nil {
 		return err
 	}
-	resp, err := client.Get(fmt.Sprintf("https://api.github.com/repos/%s/code-scanning/codeql/databases/%s", nwo, language))
+	resp, err := client.Get(fmt.Sprintf("https://api.github.com/repos/%s/code-scanning/codeql/databases/%s", task.Nwo, task.Language))
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	bytes, err := io.ReadAll(resp.Body)
+	content, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(targetPath, bytes, os.ModePerm)
+	err = os.WriteFile(targetPath, content, os.ModePerm)
 	return nil
 }
