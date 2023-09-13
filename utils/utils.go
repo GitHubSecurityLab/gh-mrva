@@ -236,41 +236,28 @@ func ResolveRepositories(listFile string, list string) ([]string, error) {
 }
 
 func ResolveQueryId(queryFile string) (string, error) {
-	// read contents of queryFile into a string
-	queryFile, err := filepath.Abs(queryFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if _, err := os.Stat(queryFile); errors.Is(err, os.ErrNotExist) {
-		log.Fatal(fmt.Sprintf("Query file %s does not exist", queryFile))
-	}
-	file, err := os.Open(queryFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanLines)
-	var fileLines []string
-	for scanner.Scan() {
-		fileLines = append(fileLines, scanner.Text())
-	}
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-	// find the query id which is a line that starts with ` * @id QUERY_ID`
 	queryId := ""
-	for _, line := range fileLines {
-		if strings.HasPrefix(line, " * @id ") {
-			queryId = strings.TrimPrefix(line, " * @id ")
-			break
-		}
+	args := []string{"resolve", "metadata", "--format=json", queryFile}
+	fmt.Println("Resolving query id for", queryFile)
+	jsonBytes, err := RunCodeQLCommand("", true, args...)
+	fmt.Println("Metadata:", string(jsonBytes))
+	var metadata map[string]interface{}
+	if strings.TrimSpace(string(jsonBytes)) == "" {
+		fmt.Println("No metadata found in the specified query file.")
+		os.Exit(1)
 	}
-	fmt.Println("Query ID:", queryId)
-	if queryId == "" {
+	err = json.Unmarshal(jsonBytes, &metadata)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	if _, ok := metadata["id"]; ok {
+		queryId = metadata["id"].(string)
+		return queryId, nil
+	} else {
 		return "", errors.New("Failed to find query id in query file")
 	}
-	return queryId, nil
 }
 
 func ResolveQueries(codeqlPath string, querySuite string) []string {
