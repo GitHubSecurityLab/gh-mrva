@@ -32,7 +32,6 @@ func init() {
 	downloadCmd.Flags().StringVarP(&sessionNameFlag, "session", "s", "", "Session name to be downloaded")
 	downloadCmd.Flags().IntVarP(&runIdFlag, "run", "r", 0, "Run ID to be downloaded")
 	downloadCmd.Flags().StringVarP(&outputDirFlag, "output-dir", "o", "", "Output directory")
-	downloadCmd.Flags().StringVarP(&outputFilenameFlag, "output-filename", "f", "", "Output filename")
 	downloadCmd.Flags().BoolVarP(&downloadDBsFlag, "download-dbs", "d", false, "Download databases (optional)")
 	downloadCmd.Flags().StringVarP(&nwoFlag, "nwo", "n", "", "Repository to download artifacts for (optional)")
 	downloadCmd.MarkFlagRequired("output-dir")
@@ -92,11 +91,13 @@ func downloadArtifacts() {
 				continue
 			}
 			if result_count != nil && result_count.(float64) > 0 {
-				// check if the SARIF or BQRS file already exists
-				dnwo := strings.Replace(nwo, "/", "_", -1)
-				sarifPath := filepath.Join(outputDirFlag, fmt.Sprintf("%s.sarif", dnwo))
-				bqrsPath := filepath.Join(outputDirFlag, fmt.Sprintf("%s.bqrs", dnwo))
-				targetPath := filepath.Join(outputDirFlag, fmt.Sprintf("%s_%s_db.zip", dnwo, language))
+				outputFilename := fmt.Sprintf("%s_%d", nwo, run.Id)
+				outputFilename = strings.Replace(outputFilename, "/", "_", -1)
+				fmt.Println(fmt.Sprintf("Downloading artifacts for %s", outputFilename))
+
+				// download artifacts if they don't exist
+				sarifPath := filepath.Join(outputDirFlag, fmt.Sprintf("%s.sarif", outputFilename))
+				bqrsPath := filepath.Join(outputDirFlag, fmt.Sprintf("%s.bqrs", outputFilename))
 				_, bqrsErr := os.Stat(bqrsPath)
 				_, sarifErr := os.Stat(sarifPath)
 				if errors.Is(bqrsErr, os.ErrNotExist) && errors.Is(sarifErr, os.ErrNotExist) {
@@ -107,12 +108,13 @@ func downloadArtifacts() {
 						Artifact:       "artifact",
 						Language:       language,
 						OutputDir:      outputDirFlag,
-						OutputFilename: outputFilenameFlag,
+						OutputFilename: outputFilename,
 					})
 				}
+				dbPath := filepath.Join(outputDirFlag, fmt.Sprintf("%s_%s_db.zip", outputFilename, language))
 				if downloadDBsFlag {
 					// check if the database already exists
-					if _, err := os.Stat(targetPath); errors.Is(err, os.ErrNotExist) {
+					if _, err := os.Stat(dbPath); errors.Is(err, os.ErrNotExist) {
 						downloadTasks = append(downloadTasks, models.DownloadTask{
 							RunId:          run.Id,
 							Nwo:            nwo,
@@ -120,7 +122,7 @@ func downloadArtifacts() {
 							Artifact:       "database",
 							Language:       language,
 							OutputDir:      outputDirFlag,
-							OutputFilename: outputFilenameFlag,
+							OutputFilename: outputFilename,
 						})
 					}
 				}

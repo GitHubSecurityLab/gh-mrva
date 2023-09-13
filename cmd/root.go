@@ -35,7 +35,6 @@ var (
 	runIdFlag          int
 	sessionPrefixFlag  string
 	outputDirFlag      string
-	outputFilenameFlag string
 	downloadDBsFlag    bool
 	nwoFlag            string
 	jsonFlag           bool
