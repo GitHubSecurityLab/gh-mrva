@@ -551,7 +551,9 @@ func downloadArtifact(url string, task models.DownloadTask) error {
 		log.Fatal(err)
 	}
 
+	downloadedFiles := []string{}
 	for _, zf := range zipReader.File {
+
 		if zf.Name != "results.sarif" && zf.Name != "results.bqrs" {
 			continue
 		}
@@ -581,9 +583,15 @@ func downloadArtifact(url string, task models.DownloadTask) error {
 		if err != nil {
 			return err
 		}
+		downloadedFiles = append(downloadedFiles, resultPath)
+	}
+
+	if len(downloadedFiles) == 0 {
+		return errors.New("No results files found in artifact")
+	} else {
+		fmt.Println("Downloaded", downloadedFiles)
 		return nil
 	}
-	return errors.New("No results.sarif file found in artifact")
 }
 
 func DownloadResults(task models.DownloadTask) error {
