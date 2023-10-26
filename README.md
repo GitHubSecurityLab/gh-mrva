@@ -5,7 +5,7 @@
 ## Configuration
 
 A configuration file will be created in `~/.config/gh-mrva/config.yml`. The following options are supported:
-- `codeql_path`: Path to CodeQL distribution
+- `codeql_path`: Path to CodeQL distribution (checkout of [codeql repo](https://github.com/github/codeql))
 - `controller`: NWO of the MRVA controller to use
 - `list_file`: Path to the JSON file containing the target repos
 
@@ -14,7 +14,7 @@ A configuration file will be created in `~/.config/gh-mrva/config.yml`. The foll
 ### Submit a new query
 
 ```bash
-gh mrva submit [--codeql-path<path to CodeQL>] [--controller <controller>] --language <language> --session <session name> [--list-file <list file>] --list <list> [--query <query> | --query-suite <query suite> ]
+gh mrva submit [--codeql-path<path to CodeQL repo>] [--controller <controller>] --language <language> --session <session name> [--list-file <list file>] --list <list> [--query <query> | --query-suite <query suite> ]
 ```
 
 Note: `codeql-dist`, `controller` and `list-file` are only optionals if defined in the configuration file
