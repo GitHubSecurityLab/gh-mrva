@@ -31,20 +31,21 @@ import (
 )
 
 var (
-	sessionNameFlag    string
-	runIdFlag          int
-	sessionPrefixFlag  string
-	outputDirFlag      string
-	downloadDBsFlag    bool
-	nwoFlag            string
-	jsonFlag           bool
-	languageFlag       string
-	listFileFlag       string
-	listFlag           string
-	codeqlPathFlag     string
-	controllerFlag     string
-	queryFileFlag      string
-	querySuiteFileFlag string
+	sessionNameFlag     string
+	runIdFlag           int
+	sessionPrefixFlag   string
+	outputDirFlag       string
+	downloadDBsFlag     bool
+	nwoFlag             string
+	jsonFlag            bool
+	languageFlag        string
+	listFileFlag        string
+	listFlag            string
+	codeqlPathFlag      string
+	controllerFlag      string
+	queryFileFlag       string
+	querySuiteFileFlag  string
+	additionalPacksFlag string
 )
 var rootCmd = &cobra.Command{
 	Use:   "gh-mrva",

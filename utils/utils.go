@@ -259,9 +259,9 @@ func ResolveQueryId(queryFile string) (string, error) {
 	}
 }
 
-func ResolveQueries(codeqlPath string, querySuite string) []string {
+func ResolveQueries(additionalPacks string, querySuite string) []string {
 	args := []string{"resolve", "queries", "--format=json", querySuite}
-	jsonBytes, err := RunCodeQLCommand(codeqlPath, false, args...)
+	jsonBytes, err := RunCodeQLCommand(additionalPacks, false, args...)
 	var queries []string
 	if strings.TrimSpace(string(jsonBytes)) == "" {
 		fmt.Println("No queries found in the specified query suite.")
@@ -275,9 +275,12 @@ func ResolveQueries(codeqlPath string, querySuite string) []string {
 	return queries
 }
 
-func RunCodeQLCommand(codeqlPath string, combined bool, args ...string) ([]byte, error) {
-	if codeqlPath != "" && !strings.Contains(strings.Join(args, " "), "packlist") {
-		args = append(args, fmt.Sprintf("--additional-packs=%s", codeqlPath))
+func RunCodeQLCommand(additionalPacks string, combined bool, args ...string) ([]byte, error) {
+	if additionalPacks != "" {
+		args = append(args, "--additional-packs", additionalPacks)
+	}
+	if strings.Contains(strings.Join(args, " "), "pack install") {
+		args = append(args, "--no-strict-mode")
 	}
 	cmd := exec.Command("codeql", args...)
 	cmd.Env = os.Environ()
@@ -288,7 +291,7 @@ func RunCodeQLCommand(codeqlPath string, combined bool, args ...string) ([]byte,
 	}
 }
 
-func GenerateQueryPack(codeqlPath string, queryFile string, language string) (string, string, error) {
+func GenerateQueryPack(queryFile string, language string, additionalPacks string) (string, string, error) {
 	fmt.Printf("Generating query pack for %s\n", queryFile)
 
 	// create a temporary directory to hold the query pack
@@ -355,7 +358,7 @@ defaultSuite:
 	} else {
 		// don't include all query files in the QLPacks. We only want the queryFile to be copied.
 		fmt.Printf("QLPack exists, stripping all other queries from %s\n", originalPackRoot)
-		toCopy := PackPacklist(codeqlPath, originalPackRoot, false)
+		toCopy := PackPacklist(originalPackRoot, false)
 		// also copy the lock file (either new name or old name) and the query file itself (these are not included in the packlist)
 		lockFileNew := filepath.Join(originalPackRoot, "qlpack.lock.yml")
 		lockFileOld := filepath.Join(originalPackRoot, "codeql-pack.lock.yml")
@@ -389,7 +392,7 @@ defaultSuite:
 	// install the pack dependencies
 	fmt.Print("Installing QLPack dependencies\n")
 	args := []string{"pack", "install", queryPackDir}
-	stdouterr, err := RunCodeQLCommand(codeqlPath, true, args...)
+	stdouterr, err := RunCodeQLCommand(additionalPacks, true, args...)
 	if err != nil {
 		fmt.Printf("`codeql pack bundle` failed with error: %v\n", string(stdouterr))
 		return "", "", fmt.Errorf("Failed to install query pack: %v", err)
@@ -398,7 +401,7 @@ defaultSuite:
 	fmt.Print("Compiling and bundling the QLPack (This may take a while)\n")
 	args = []string{"pack", "bundle", "-o", bundlePath, queryPackDir}
 	args = append(args, precompilationOpts...)
-	stdouterr, err = RunCodeQLCommand(codeqlPath, true, args...)
+	stdouterr, err = RunCodeQLCommand(additionalPacks, true, args...)
 	if err != nil {
 		fmt.Printf("`codeql pack bundle` failed with error: %v\n", string(stdouterr))
 		return "", "", fmt.Errorf("Failed to bundle query pack: %v\n", err)
@@ -419,14 +422,14 @@ defaultSuite:
 	return bundleBase64, queryId, nil
 }
 
-func PackPacklist(codeqlPath string, dir string, includeQueries bool) []string {
+func PackPacklist(dir string, includeQueries bool) []string {
 	// since 2.7.1, packlist returns an object with a "paths" property that is a list of packs.
 	args := []string{"pack", "packlist", "--format=json"}
 	if !includeQueries {
 		args = append(args, "--no-include-queries")
 	}
 	args = append(args, dir)
-	jsonBytes, err := RunCodeQLCommand(codeqlPath, false, args...)
+	jsonBytes, err := RunCodeQLCommand("", false, args...)
 	var packlist map[string][]string
 	err = json.Unmarshal(jsonBytes, &packlist)
 	if err != nil {

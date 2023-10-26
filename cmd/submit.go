@@ -15,14 +15,15 @@ import (
 )
 
 var (
-	controller     string
-	codeqlPath     string
-	listFile       string
-	listName       string
-	language       string
-	sessionName    string
-	queryFile      string
-	querySuiteFile string
+	additionalPacks string
+	controller      string
+	codeqlPath      string
+	listFile        string
+	listName        string
+	language        string
+	sessionName     string
+	queryFile       string
+	querySuiteFile  string
 )
 var submitCmd = &cobra.Command{
 	Use:   "submit",
@@ -43,6 +44,7 @@ func init() {
 	submitCmd.Flags().StringVarP(&listFileFlag, "list-file", "f", "", "Path to repo list file (overrides config file)")
 	submitCmd.Flags().StringVarP(&listFlag, "list", "i", "", "Name of repo list")
 	submitCmd.Flags().StringVarP(&codeqlPathFlag, "codeql-path", "p", "", "Path to CodeQL distribution (overrides config file)")
+	submitCmd.Flags().StringVarP(&additionalPacksFlag, "additional-packs", "a", "", "Additional Packs")
 	submitCmd.MarkFlagRequired("session")
 	submitCmd.MarkFlagRequired("language")
 	submitCmd.MarkFlagsMutuallyExclusive("query", "query-suite")
@@ -69,6 +71,9 @@ func submitQuery() {
 	} else if configData.CodeQLPath != "" {
 		codeqlPath = configData.CodeQLPath
 	}
+	if additionalPacksFlag != "" {
+		additionalPacks = additionalPacksFlag
+	}
 	if languageFlag != "" {
 		language = languageFlag
 	}
@@ -83,6 +88,14 @@ func submitQuery() {
 	}
 	if querySuiteFileFlag != "" {
 		querySuiteFile = querySuiteFileFlag
+	}
+
+	if codeqlPath != "" {
+		if additionalPacks != "" {
+			additionalPacks = ":" + codeqlPath
+		} else {
+			additionalPacks = codeqlPath
+		}
 	}
 
 	if controller == "" {
@@ -118,13 +131,13 @@ func submitQuery() {
 	if queryFileFlag != "" {
 		queries = append(queries, queryFileFlag)
 	} else if querySuiteFileFlag != "" {
-		queries = utils.ResolveQueries(codeqlPath, querySuiteFile)
+		queries = utils.ResolveQueries(additionalPacks, querySuiteFile)
 	}
 
 	fmt.Printf("Submitting %d queries for %d repositories\n", len(queries), len(repositories))
 	var runs []models.Run
 	for _, query := range queries {
-		encodedBundle, queryId, err := utils.GenerateQueryPack(codeqlPath, query, language)
+		encodedBundle, queryId, err := utils.GenerateQueryPack(query, language, additionalPacks)
 		if err != nil {
 			log.Fatal(err)
 		}
