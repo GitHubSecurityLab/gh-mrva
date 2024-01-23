@@ -24,6 +24,7 @@ var (
 	sessionName     string
 	queryFile       string
 	querySuiteFile  string
+	actionBranch    string
 )
 var submitCmd = &cobra.Command{
 	Use:   "submit",
@@ -45,6 +46,7 @@ func init() {
 	submitCmd.Flags().StringVarP(&listFlag, "list", "i", "", "Name of repo list")
 	submitCmd.Flags().StringVarP(&codeqlPathFlag, "codeql-path", "p", "", "Path to CodeQL distribution (overrides config file)")
 	submitCmd.Flags().StringVarP(&additionalPacksFlag, "additional-packs", "a", "", "Additional Packs")
+	submitCmd.Flags().StringVarP(&actionBranchFlag, "action-branch", "b", "main", "github/codeql-variant-analysis-action branch to use")
 	submitCmd.MarkFlagRequired("session")
 	submitCmd.MarkFlagRequired("language")
 	submitCmd.MarkFlagsMutuallyExclusive("query", "query-suite")
@@ -88,6 +90,9 @@ func submitQuery() {
 	}
 	if querySuiteFileFlag != "" {
 		querySuiteFile = querySuiteFileFlag
+	}
+	if actionBranchFlag != "" {
+		actionBranch = actionBranchFlag
 	}
 
 	if codeqlPath != "" {
@@ -152,7 +157,7 @@ func submitQuery() {
 			chunks = append(chunks, repositories[i:end])
 		}
 		for _, chunk := range chunks {
-			id, err := utils.SubmitRun(controller, language, chunk, encodedBundle)
+			id, err := utils.SubmitRun(controller, language, chunk, encodedBundle, branch)
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -172,7 +172,7 @@ func SaveSession(name string, controller string, runs []models.Run, language str
 	return nil
 }
 
-func SubmitRun(controller string, language string, repoChunk []string, bundle string) (int, error) {
+func SubmitRun(controller string, language string, repoChunk []string, bundle string, actionBranch string) (int, error) {
 	opts := api.ClientOptions{
 		Headers: map[string]string{"Accept": "application/vnd.github.v3+json"},
 	}
@@ -189,7 +189,7 @@ func SubmitRun(controller string, language string, repoChunk []string, bundle st
 		Repositories: repoChunk,
 		Language:     language,
 		Pack:         bundle,
-		Ref:          "main",
+		Ref:          actionBranch,
 	}
 	var buf bytes.Buffer
 	err = json.NewEncoder(&buf).Encode(body)
