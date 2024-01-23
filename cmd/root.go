@@ -46,7 +46,7 @@ var (
 	queryFileFlag       string
 	querySuiteFileFlag  string
 	additionalPacksFlag string
-	branchFlag string
+	actionBranchFlag 	string
 )
 var rootCmd = &cobra.Command{
 	Use:   "gh-mrva",
