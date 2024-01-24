@@ -143,6 +143,11 @@
         # Download the sarif files when finished
         gh mrva download --session mirva-session-1 \
            --output-dir mirva-session-1-sarif
+
+        # Or download the sarif files and CodeQL dbs when finished
+        gh mrva download --session mirva-session-1 \
+           --download-dbs \
+           --output-dir mirva-session-1-sarif
       #+END_SRC
 
 
