@@ -30,11 +30,11 @@
      and re-run the variant analysis query. 
    #+END_SRC
 
-*** Use the codeql extension to run MRVA
+** Use the codeql extension to run MRVA
     Following the [[https://codeql.github.com/docs/codeql-for-visual-studio-code/running-codeql-queries-at-scale-with-mrva/#controller-repository][instructions]] and running =./FlatBuffersFunc.ql=, the entry
     =google/flatbuffers= has one [[https://github.com/google/flatbuffers/blob/dbce69c63b0f3cee8f6d9521479fd3b087338314/src/binary_annotator.cpp#L25C21-L25C37][result]].  Others have none.
 
-*** Action logs on Controller Repository
+** Action logs on Controller Repository
     The action logs are on the controller repository at
     https://github.com/hohn/mirva-controller/actions.
 
@@ -64,5 +64,64 @@
     The workflow producing the logs:
     https://github.com/github/codeql-variant-analysis-action/blob/main/variant-analysis-workflow.yml
     
+
+    
+
+** Use custom list with target repos in VS Code
+   The json file is here:
+   : /Users/hohn/Library/Application Support/Code/User/workspaceStorage/bced2e4aa1a5f78ca07cf9e09151b1af/GitHub.vscode-codeql/databases.json
+
+   It can be edited in VS Code using the ={}= button.
+
+   It's saved in the workspace, but not in the current git repository.
+
+   Here are two snapshots for reference:
+    #+begin_src javascript
+      {
+        "version": 1,
+        "databases": {
+          "variantAnalysis": {
+            "repositoryLists": [
+              {
+                "name": "mirva-list",
+                "repositories": [
+                  "google/flatbuffers"
+                ]
+              }
+            ],
+            "owners": [],
+            "repositories": []
+          }
+        },
+        "selected": {
+          "kind": "variantAnalysisSystemDefinedList",
+          "listName": "top_10"
+        }
+      }
+    #+end_src
+    or
+    #+begin_src javascript
+      {
+        "version": 1,
+        "databases": {
+          "variantAnalysis": {
+            "repositoryLists": [
+              {
+                "name": "mirva-list",
+                "repositories": [
+                  "google/flatbuffers"
+                ]
+              }
+            ],
+            "owners": [],
+            "repositories": []
+          }
+        },
+        "selected": {
+          "kind": "variantAnalysisUserDefinedList",
+          "listName": "mirva-list"
+        }
+      }
+    #+end_src
 
     
