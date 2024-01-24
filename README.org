@@ -91,10 +91,22 @@
      }
    #+end_src
 
-    
-
 ** Run MRVA from command line
-   1. Set up the configuration
+   1. Install mrva cli
+      #+BEGIN_SRC sh 
+        cd ~/local/gh-mrva
+        # Build it
+        go mod edit -replace="github.com/GitHubSecurityLab/gh-mrva=/Users/hohn/local/gh-mrva"
+        go build
+
+        # Install 
+        gh extension install .
+
+        # Sanity check
+        gh mrva -h
+      #+END_SRC
+
+   2. Set up the configuration
      #+BEGIN_SRC sh 
        cd ~/local/gh-mrva
 
@@ -112,7 +124,7 @@
        eof
      #+END_SRC
 
-   2. Submit the mrva job
+   3. Submit the mrva job
       #+BEGIN_SRC sh 
         gh mrva submit --help    
 
@@ -121,7 +133,7 @@
            --query /Users/hohn/local/gh-mrva/FlatBuffersFunc.ql
       #+END_SRC
 
-   3. Check the status and download the sarif files
+   4. Check the status and download the sarif files
       #+BEGIN_SRC sh 
         cd ~/local/gh-mrva
 
