@@ -33,4 +33,36 @@
 *** Use the codeql extension to run MRVA
     Following the [[https://codeql.github.com/docs/codeql-for-visual-studio-code/running-codeql-queries-at-scale-with-mrva/#controller-repository][instructions]] and running =./FlatBuffersFunc.ql=, the entry
     =google/flatbuffers= has one [[https://github.com/google/flatbuffers/blob/dbce69c63b0f3cee8f6d9521479fd3b087338314/src/binary_annotator.cpp#L25C21-L25C37][result]].  Others have none.
-  
+
+*** Action logs on Controller Repository
+    The action logs are on the controller repository at
+    https://github.com/hohn/mirva-controller/actions.
+
+    The =action>google flatbuffers= log references
+    : github/codeql-variant-analysis-action
+    #+BEGIN_SRC yaml
+      Run actions/checkout@v4
+        with:
+          repository: github/codeql-variant-analysis-action
+          ref: main
+          token: ***
+          ssh-strict: true
+          persist-credentials: true
+          clean: true
+          sparse-checkout-cone-mode: true
+          fetch-depth: 1
+          fetch-tags: false
+          show-progress: true
+          lfs: false
+          submodules: false
+          set-safe-directory: true
+        env:
+          CODEQL_ENABLE_EXPERIMENTAL_FEATURES_SWIFT: true
+    #+END_SRC
+    This is https://github.com/github/codeql-variant-analysis-action
+
+    The workflow producing the logs:
+    https://github.com/github/codeql-variant-analysis-action/blob/main/variant-analysis-workflow.yml
+    
+
+    
