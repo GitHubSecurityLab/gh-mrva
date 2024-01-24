@@ -1,0 +1,21 @@
+{
+    "version": 1,
+    "databases": {
+        "variantAnalysis": {
+            "repositoryLists": [
+                {
+                    "name": "mirva-list",
+                    "repositories": [
+                        "google/flatbuffers"
+                    ]
+                }
+            ],
+            "owners": [],
+            "repositories": []
+        }
+    },
+    "selected": {
+        "kind": "variantAnalysisUserDefinedList",
+        "listName": "mirva-list"
+    }
+}
