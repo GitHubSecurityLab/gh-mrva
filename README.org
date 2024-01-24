@@ -1,0 +1,36 @@
+* Using MRVA
+  This repository has several additions to illustrate a full MRVA workflow.
+** Set up controller repo
+   Following [[https://codeql.github.com/docs/codeql-for-visual-studio-code/running-codeql-queries-at-scale-with-mrva/#controller-repository][the instructions]], start with 
+   manually creating the controller repository
+   #+BEGIN_SRC sh 
+     gh repo create mirva-controller --public -d 'Controller for MRVA'
+   #+END_SRC
+   This avoids 
+   #+BEGIN_SRC text
+     An error occurred while setting up the controller repository: Controller
+     repository "hohn/mirva-controller" not found.
+   #+END_SRC
+
+   Populate the controller repository
+   #+BEGIN_SRC sh 
+     mkdir -p ~/local/mirva-controller && cd ~/local/mirva-controller 
+     echo "* mirva-controller" >> README.org
+     git init
+     git add README.org
+     git commit -m "first commit"
+     git branch -M master
+     git remote add origin git@github.com:hohn/mirva-controller.git
+     git push -u origin master
+   #+END_SRC
+   This avoids
+   #+BEGIN_SRC text
+     Variant analysis failed because the controller repository hohn/mirva-controller
+     does not have a branch 'master'. Please create a 'master' branch by clicking here
+     and re-run the variant analysis query. 
+   #+END_SRC
+
+*** Use the codeql extension to run MRVA
+    Following the [[https://codeql.github.com/docs/codeql-for-visual-studio-code/running-codeql-queries-at-scale-with-mrva/#controller-repository][instructions]] and running =./FlatBuffersFunc.ql=, the entry
+    =google/flatbuffers= has one [[https://github.com/google/flatbuffers/blob/dbce69c63b0f3cee8f6d9521479fd3b087338314/src/binary_annotator.cpp#L25C21-L25C37][result]].  Others have none.
+  
