@@ -1,5 +1,5 @@
 * Using MRVA
-  This repository has several additions to illustrate a full MRVA workflow.
+  Following are notes to illustrate a full MRVA workflow.
 ** Set up controller repo
    Following [[https://codeql.github.com/docs/codeql-for-visual-studio-code/running-codeql-queries-at-scale-with-mrva/#controller-repository][the instructions]], start with 
    manually creating the controller repository
@@ -35,7 +35,7 @@
    =google/flatbuffers= has one [[https://github.com/google/flatbuffers/blob/dbce69c63b0f3cee8f6d9521479fd3b087338314/src/binary_annotator.cpp#L25C21-L25C37][result]].  Others have none.
 
 ** Use custom list with target repos in VS Code
-   The json file is here:
+   The json file is in your VS Code workspace.  In my case, here:
    : /Users/hohn/Library/Application Support/Code/User/workspaceStorage/bced2e4aa1a5f78ca07cf9e09151b1af/GitHub.vscode-codeql/databases.json
 
    It can be edited in VS Code using the ={}= button.
