@@ -157,7 +157,7 @@ func submitQuery() {
 			chunks = append(chunks, repositories[i:end])
 		}
 		for _, chunk := range chunks {
-			id, err := utils.SubmitRun(controller, language, chunk, encodedBundle, branch)
+			id, err := utils.SubmitRun(controller, language, chunk, encodedBundle, actionBranch)
 			if err != nil {
 				log.Fatal(err)
 			}
