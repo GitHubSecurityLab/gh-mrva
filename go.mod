@@ -1,6 +1,6 @@
 module github.com/GitHubSecurityLab/gh-mrva
 
-go 1.19
+go 1.25.0
 
 require (
 	github.com/cli/go-gh v1.2.1
@@ -25,9 +25,8 @@ require (
 	github.com/muesli/termenv v0.14.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/thlib/go-timezone-local v0.0.0-20210907160436-ef149e42d28e // indirect
-	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/term v0.43.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // direct
 )
-
